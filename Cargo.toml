@@ -4,5 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+async-imap = { version = "0.11.2", features = [
+  "runtime-tokio",
+], default-features = false }
+color-eyre = "0.6.5"
+dotenv = "0.15.0"
 sqlx = { version = "0.9.0", features = ["runtime-tokio", "sqlite"] }
-tokio = { version = "1.52.3", features = ["rt", "macros", "rt-multi-thread"] }
+tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }
+tokio-native-tls = "0.3.1"
