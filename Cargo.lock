@@ -913,9 +913,11 @@ dependencies = [
  "async-imap",
  "color-eyre",
  "dotenv",
+ "futures",
  "sqlx",
  "tokio",
  "tokio-native-tls",
+ "tokio-stream",
 ]
 
 [[package]]
