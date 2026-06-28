@@ -5,6 +5,8 @@ use tokio_native_tls::TlsStream;
 use tokio_native_tls::native_tls::TlsConnector;
 use tokio_stream::StreamExt;
 
+use crate::subject_decoder::decode_subject;
+
 pub async fn connect_imap(
     domain: &str,
     port: u16,
@@ -32,11 +34,10 @@ pub async fn fetch_headers(session: &mut Session<TlsStream<TcpStream>>) -> Resul
         let msg = msg?;
 
         if let Some(envelope) = msg.envelope() {
-            let subject = envelope
-                .subject
-                .as_ref()
-                .map(|s| String::from_utf8_lossy(s).to_string())
-                .unwrap_or_else(|| "<no subject>".to_string());
+            let subject = envelope.subject.as_deref().map_or_else(
+                || Ok::<_, color_eyre::Report>("<no subject>".to_owned()),
+                |subject| Ok(decode_subject(str::from_utf8(subject)?)),
+            )?;
 
             let from = envelope
                 .from
@@ -45,19 +46,12 @@ pub async fn fetch_headers(session: &mut Session<TlsStream<TcpStream>>) -> Resul
                 .and_then(|addr| {
                     let mailbox = addr
                         .mailbox
-                        .as_ref()
-                        .map(|m| String::from_utf8_lossy(m).to_string());
-                    let host = addr
-                        .host
-                        .as_ref()
-                        .map(|h| String::from_utf8_lossy(h).to_string());
-
-                    match (mailbox, host) {
-                        (Some(m), Some(h)) => Some(format!("{m}@{h}")),
-                        _ => None,
-                    }
+                        .as_deref()
+                        .map(|s| String::from_utf8_lossy(s))?;
+                    let host = addr.host.as_deref().map(String::from_utf8_lossy)?;
+                    Some(format!("{mailbox}@{host}"))
                 })
-                .unwrap_or_else(|| "<unknown>".to_string());
+                .unwrap_or_else(|| "<no sender>".to_owned());
 
             println!("From: {from}");
             println!("Subject: {subject}");

@@ -8,6 +8,9 @@ use crate::imap::{connect_imap, fetch_headers};
 
 mod db;
 mod imap;
+mod subject_decoder;
+#[cfg(test)]
+mod test_subject_decoder;
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
