@@ -4,9 +4,8 @@ use sqlx::SqlitePool;
 use sqlx::sqlite::SqliteConnectOptions;
 
 pub async fn setup_db(db_url: &Path) -> Result<SqlitePool, sqlx::Error> {
-    let options = SqliteConnectOptions::new()
-        .create_if_missing(true)
-        .filename(db_url);
+    let options =
+        SqliteConnectOptions::new().create_if_missing(true).filename(db_url);
     let pool = SqlitePool::connect_with(options).await?;
 
     sqlx::query(
