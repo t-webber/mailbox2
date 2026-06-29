@@ -14,3 +14,44 @@ sqlx = { version = "0.9.0", features = ["runtime-tokio", "sqlite"] }
 tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }
 tokio-native-tls = "0.3.1"
 tokio-stream = "0.1.18"
+
+[lints.rust]
+missing_docs = "deny"
+unused = "deny"
+warnings = "deny"
+deprecated_safe = "deny"
+future_incompatible = "deny"
+keyword_idents = "deny"
+let_underscore = "deny"
+nonstandard_style = "deny"
+refining_impl_trait = "deny"
+rust_2018_compatibility = "deny"
+rust_2018_idioms = "deny"
+rust_2021_compatibility = "deny"
+rust_2024_compatibility = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+complexity = { level = "deny", priority = -1 }
+correctness = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+restriction = { level = "deny", priority = -1 }
+style = { level = "deny", priority = -1 }
+
+single_call_fn = "allow"
+implicit_return = "allow"
+pattern_type_mismatch = "allow"
+blanket_clippy_restriction_lints = "allow"
+mod_module_files = "allow"
+pub_with_shorthand = "allow"
+unseparated_literal_suffix = "allow"
+question_mark_used = "allow"
+missing_inline_in_public_items = "allow"
+missing_trait_methods = "allow"
+module_name_repetitions = "allow"
+inline_trait_bounds = "allow"
+else_if_without_else = "allow"
+doc_include_without_cfg = "allow"
+multiple_inherent_impl = "allow"
