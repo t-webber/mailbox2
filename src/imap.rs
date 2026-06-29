@@ -15,9 +15,8 @@ pub async fn connect_imap(
 ) -> color_eyre::Result<Session<TlsStream<TcpStream>>> {
     let tcp = TcpStream::connect((domain, port)).await?;
     let tls = TlsConnector::builder().build()?;
-    let tls_stream = tokio_native_tls::TlsConnector::from(tls)
-        .connect(domain, tcp)
-        .await?;
+    let tls_stream =
+        tokio_native_tls::TlsConnector::from(tls).connect(domain, tcp).await?;
 
     let client = Client::new(tls_stream);
 
@@ -25,7 +24,9 @@ pub async fn connect_imap(
     Ok(session)
 }
 
-pub async fn fetch_headers(session: &mut Session<TlsStream<TcpStream>>) -> Result<()> {
+pub async fn fetch_headers(
+    session: &mut Session<TlsStream<TcpStream>>,
+) -> Result<()> {
     session.select("INBOX").await?;
 
     let mut messages = session.fetch("1:*", "(ENVELOPE)").await?;
@@ -48,7 +49,8 @@ pub async fn fetch_headers(session: &mut Session<TlsStream<TcpStream>>) -> Resul
                         .mailbox
                         .as_deref()
                         .map(|s| String::from_utf8_lossy(s))?;
-                    let host = addr.host.as_deref().map(String::from_utf8_lossy)?;
+                    let host =
+                        addr.host.as_deref().map(String::from_utf8_lossy)?;
                     Some(format!("{mailbox}@{host}"))
                 })
                 .unwrap_or_else(|| "<no sender>".to_owned());
