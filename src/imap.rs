@@ -3,10 +3,11 @@ use color_eyre::Result;
 use tokio::net::TcpStream;
 use tokio_native_tls::TlsStream;
 use tokio_native_tls::native_tls::TlsConnector;
-use tokio_stream::StreamExt;
+use tokio_stream::StreamExt as _;
 
 use crate::subject_decoder::decode_subject;
 
+/// Returns an IMAP session.
 pub async fn connect_imap(
     domain: &str,
     port: u16,
@@ -20,10 +21,13 @@ pub async fn connect_imap(
 
     let client = Client::new(tls_stream);
 
-    let session = client.login(username, password).await.map_err(|(e, _)| e)?;
+    let session =
+        client.login(username, password).await.map_err(|(err, _)| err)?;
     Ok(session)
 }
 
+/// Fetches all the headers of all the emails.
+#[expect(clippy::print_stdout, reason = "todo")]
 pub async fn fetch_headers(
     session: &mut Session<TlsStream<TcpStream>>,
 ) -> Result<()> {
@@ -32,9 +36,7 @@ pub async fn fetch_headers(
     let mut messages = session.fetch("1:*", "(ENVELOPE)").await?;
 
     while let Some(msg) = messages.next().await {
-        let msg = msg?;
-
-        if let Some(envelope) = msg.envelope() {
+        if let Some(envelope) = msg?.envelope() {
             let subject = envelope.subject.as_deref().map_or_else(
                 || Ok::<_, color_eyre::Report>("<no subject>".to_owned()),
                 |subject| Ok(decode_subject(str::from_utf8(subject)?)),
@@ -43,12 +45,12 @@ pub async fn fetch_headers(
             let from = envelope
                 .from
                 .as_ref()
-                .and_then(|f| f.first())
+                .and_then(|senders| senders.first())
                 .and_then(|addr| {
                     let mailbox = addr
                         .mailbox
                         .as_deref()
-                        .map(|s| String::from_utf8_lossy(s))?;
+                        .map(|name| String::from_utf8_lossy(name))?;
                     let host =
                         addr.host.as_deref().map(String::from_utf8_lossy)?;
                     Some(format!("{mailbox}@{host}"))

@@ -3,6 +3,9 @@ use std::path::Path;
 use sqlx::SqlitePool;
 use sqlx::sqlite::SqliteConnectOptions;
 
+/// Returns a connection pool to the database.
+///
+/// The sqlite file is created if it doesn't exist.
 pub async fn setup_db(db_url: &Path) -> Result<SqlitePool, sqlx::Error> {
     let options =
         SqliteConnectOptions::new().create_if_missing(true).filename(db_url);
