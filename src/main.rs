@@ -3,8 +3,12 @@
 //! Crate to ease managing a mailbox, including fetching email bodies, checking
 //! for new messages not yet pulled, and sending out new email.
 
+#![expect(dead_code, reason = "todo")]
+
 /// Handles database connections.
 mod db;
+/// Structure to handle headers.
+mod header;
 /// Handles interactions with the IMAP protocol.
 mod imap;
 /// Decodes the encoded subjects.
@@ -32,6 +36,8 @@ async fn main() -> color_eyre::Result<()> {
         &var("MBX_PASSWORD")?,
     )
     .await?;
-    fetch_headers(&mut session).await?;
+    for header in fetch_headers(&mut session).await? {
+        dbg!(header);
+    }
     Ok(())
 }
