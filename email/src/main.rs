@@ -11,6 +11,8 @@ mod db;
 mod header;
 /// Handles interactions with the IMAP protocol.
 mod imap;
+/// Implements the provider trait.
+mod provider;
 /// Decodes the encoded subjects.
 mod subject_decoder;
 #[cfg(test)]

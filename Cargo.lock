@@ -913,10 +913,18 @@ dependencies = [
  "async-imap",
  "color-eyre",
  "dotenv",
+ "mailbox-shared",
  "sqlx",
  "tokio",
  "tokio-native-tls",
  "tokio-stream",
+]
+
+[[package]]
+name = "mailbox-shared"
+version = "0.1.0"
+dependencies = [
+ "color-eyre",
 ]
 
 [[package]]
