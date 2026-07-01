@@ -1,9 +1,8 @@
-[package]
-name = "mailbox"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = ["email"]
+resolver = "3"
 
-[dependencies]
+[workspace.dependencies]
 async-imap = { version = "0.11.2", features = [
   "runtime-tokio",
 ], default-features = false }
@@ -14,7 +13,7 @@ tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }
 tokio-native-tls = "0.3.1"
 tokio-stream = "0.1.18"
 
-[lints.rust]
+[workspace.lints.rust]
 missing_docs = "deny"
 unused = "deny"
 warnings = "deny"
@@ -29,7 +28,7 @@ rust_2018_idioms = "deny"
 rust_2021_compatibility = "deny"
 rust_2024_compatibility = "deny"
 
-[lints.clippy]
+[workspace.lints.clippy]
 all = { level = "deny", priority = -1 }
 complexity = { level = "deny", priority = -1 }
 correctness = { level = "deny", priority = -1 }
