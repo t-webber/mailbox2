@@ -25,7 +25,7 @@ pub async fn connect_imap(
     port: u16,
     username: &str,
     password: &str,
-) -> color_eyre::Result<Session<TlsStream<TcpStream>>> {
+) -> Result<Session<TlsStream<TcpStream>>> {
     let tcp = TcpStream::connect((domain, port)).await?;
     let tls = TlsConnector::builder().build()?;
     let tls_stream =
