@@ -3,7 +3,7 @@
 use std::io::{Write as _, stdin, stdout};
 
 use color_eyre::Result;
-use mailbox_shared::{Provider, Room as _};
+use mailbox_shared::{Message, Provider, Room as _};
 
 /// Prints without a newline and flushes to the console.
 #[expect(clippy::print_stdout, reason = "cli")]
@@ -50,24 +50,29 @@ pub async fn cli<P: Provider>() -> color_eyre::Result<()> {
             for (i, room) in rooms.iter().enumerate().take(index) {
                 println!("[{i}] {:30} {}", room.name(), room.overview());
             }
-        } else {
+        } else if let Some(room) = rooms.get(index) {
+            let headers = room
+                .debug()
+                .split('\n')
+                .map(|line| {
+                    let (name, value) =
+                        line.split_once(':').unwrap_or(("", line));
+                    format!("\x1b[32m{name:10}:\x1b[0m{value}")
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+
             println!(
-                "{}",
-                rooms.get(index).map_or_else(
-                    || "<not found>".to_owned(),
-                    |room| {
-                        room.debug()
-                            .split('\n')
-                            .map(|line| {
-                                let (name, value) =
-                                    line.split_once(':').unwrap_or(("", line));
-                                format!("\x1b[32m{name:10}:\x1b[0m{value}")
-                            })
-                            .collect::<Vec<_>>()
-                            .join("\n")
-                    }
-                )
+                "\x1b[35m### Headers:\x1b[0m\n{headers}\n\x1b[35m### \
+                 Body:\x1b[0m\n{}",
+                provider
+                    .get_messages(room)
+                    .await?
+                    .first()
+                    .map_or_else(|| "<no first>".to_owned(), Message::debug)
             );
+        } else {
+            println!("<invalid id>");
         }
     }
 }

@@ -12,6 +12,7 @@ tokio.workspace = true
 tokio-native-tls.workspace = true
 tokio-stream.workspace = true
 mailbox-shared.workspace = true
+mailparse.workspace = true
 
 [lints]
 workspace = true

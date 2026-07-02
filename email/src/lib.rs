@@ -5,6 +5,8 @@
 
 #![expect(dead_code, reason = "todo")]
 
+/// Body of the email.
+mod body;
 /// Handles database connections.
 mod db;
 /// Structure to handle headers.

@@ -12,11 +12,19 @@ use color_eyre::Result;
 /// Anything that is displayed in the app is a provider (emails, mautrixes,
 /// etc.)
 pub trait Provider: Sized {
+    /// Cf. [`Message`].
+    type Message: Message;
     /// Cf. [`Room`].
     type Room: Room;
 
     /// Authenticates and establishes the connection.
     fn auth() -> impl Future<Output = Result<Self>>;
+
+    /// Fetches the body of the room.
+    fn get_messages(
+        &mut self,
+        room: &Self::Room,
+    ) -> impl Future<Output = Result<Vec<Self::Message>>>;
 
     /// Returns the list of [`Self::Room`] for this [`Provider`].
     fn get_rooms(&mut self) -> impl Future<Output = Result<Vec<Self::Room>>>;
@@ -37,4 +45,10 @@ pub trait Room: Debug {
     fn name(&self) -> Cow<'_, str>;
     /// Quick overview of the room (last message, subject, etc.)
     fn overview(&self) -> Cow<'_, str>;
+}
+
+/// A message of a [`Room`].
+pub trait Message: Debug {
+    /// Displays the entire content of the room.
+    fn debug(&self) -> String;
 }

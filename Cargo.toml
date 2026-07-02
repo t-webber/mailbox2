@@ -12,6 +12,7 @@ sqlx = { version = "0.9.0", features = ["runtime-tokio", "sqlite"] }
 tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread"] }
 tokio-native-tls = "0.3.1"
 tokio-stream = "0.1.18"
+mailparse = "0.16.1"
 mailbox-shared = { path = "shared" }
 mailbox-email = { path = "email" }
 mailbox-cli = { path = "cli" }
