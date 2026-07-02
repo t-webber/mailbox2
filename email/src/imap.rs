@@ -1,5 +1,6 @@
 extern crate alloc;
 use alloc::borrow::Cow;
+use std::sync::Arc;
 
 use async_imap::imap_proto::Address;
 use async_imap::{Client, Session};
@@ -41,8 +42,10 @@ pub async fn connect_imap(
 /// Fetches all the headers of all the emails.
 pub async fn fetch_headers(
     session: &mut Session<TlsStream<TcpStream>>,
+    mailbox: &str,
 ) -> Result<Vec<Header>> {
-    session.select("INBOX").await?;
+    session.select(mailbox).await?;
+    let mailbox: Arc<str> = Arc::from(mailbox);
 
     let mut messages = session.fetch("1:*", "(UID ENVELOPE)").await?;
 
@@ -57,6 +60,7 @@ pub async fn fetch_headers(
             );
 
             headers.push(Header {
+                mailbox: mailbox.clone(),
                 from: serialises_addresses(envelope.from.as_ref()),
                 subject,
                 uid: msg.uid.unwrap_or_default(),

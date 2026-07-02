@@ -1,5 +1,5 @@
 [workspace]
-members = ["email", "shared"]
+members = ["email", "shared", "cli", "bin"]
 resolver = "3"
 
 [workspace.dependencies]
@@ -14,6 +14,7 @@ tokio-native-tls = "0.3.1"
 tokio-stream = "0.1.18"
 mailbox-shared = { path = "shared" }
 mailbox-email = { path = "email" }
+mailbox-cli = { path = "cli" }
 
 [workspace.lints.rust]
 missing_docs = "deny"
@@ -55,3 +56,4 @@ inline_trait_bounds = "allow"
 else_if_without_else = "allow"
 doc_include_without_cfg = "allow"
 multiple_inherent_impl = "allow"
+pub-use = "allow"

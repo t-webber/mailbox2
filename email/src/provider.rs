@@ -33,6 +33,6 @@ impl Provider for EmailProvider {
     }
 
     async fn get_rooms(&mut self) -> Result<Vec<Header>> {
-        fetch_headers(&mut self.session).await
+        fetch_headers(&mut self.session, "INBOX").await
     }
 }
