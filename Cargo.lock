@@ -907,6 +907,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 
 [[package]]
+name = "mailbox"
+version = "0.1.0"
+dependencies = [
+ "color-eyre",
+ "mailbox-cli",
+ "mailbox-email",
+ "mailbox-shared",
+ "tokio",
+]
+
+[[package]]
+name = "mailbox-cli"
+version = "0.1.0"
+dependencies = [
+ "color-eyre",
+ "mailbox-shared",
+]
+
+[[package]]
 name = "mailbox-email"
 version = "0.1.0"
 dependencies = [
