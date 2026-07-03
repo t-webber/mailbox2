@@ -4,6 +4,7 @@ use alloc::sync::Arc;
 use async_imap::{Client, Session};
 use color_eyre::Result;
 use color_eyre::eyre::bail;
+use mailbox_shared::EmailConfig;
 use tokio::net::TcpStream;
 use tokio_native_tls::TlsStream;
 use tokio_native_tls::native_tls::TlsConnector;
@@ -14,11 +15,9 @@ use crate::header::Header;
 
 /// Returns an IMAP session.
 pub async fn connect_imap(
-    domain: &str,
-    port: u16,
-    username: &str,
-    password: &str,
+    cfg: &EmailConfig,
 ) -> Result<Session<TlsStream<TcpStream>>> {
+    let (user, password, domain, port) = cfg.values();
     let tcp = TcpStream::connect((domain, port)).await?;
     let tls = TlsConnector::builder().build()?;
     let tls_stream =
@@ -26,8 +25,7 @@ pub async fn connect_imap(
 
     let client = Client::new(tls_stream);
 
-    let session =
-        client.login(username, password).await.map_err(|(err, _)| err)?;
+    let session = client.login(user, password).await.map_err(|(err, _)| err)?;
     Ok(session)
 }
 
