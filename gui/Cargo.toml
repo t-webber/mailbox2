@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-color-eyre.workspace = true
 iced.workspace = true
 mailbox-shared.workspace = true
 mailbox-email.workspace = true

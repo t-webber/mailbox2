@@ -2,20 +2,22 @@
 
 use std::env::args;
 
-use color_eyre::Result;
 use mailbox_cli::cli;
 use mailbox_gui::GuiApp;
+use tokio::runtime::Builder;
 
 /// Runs the CLI application.
-fn main() -> Result<()> {
-    color_eyre::install()?;
+#[expect(
+    clippy::unwrap_used,
+    reason = "if it reaches here, it is unrecoverable"
+)]
+fn main() {
     match args().nth(1) {
-        Some(arg) if arg == "cli" => tokio_cli(),
-        _ => GuiApp::run(),
+        Some(arg) if arg == "cli" => Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+            .block_on(async { cli().await }),
+        _ => GuiApp::run().unwrap(),
     }
-}
-
-#[tokio::main]
-async fn tokio_cli() -> Result<()> {
-    cli().await
 }

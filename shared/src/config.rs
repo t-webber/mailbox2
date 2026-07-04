@@ -2,9 +2,9 @@ extern crate alloc;
 use alloc::sync::Arc;
 use std::collections::HashSet;
 use std::fs::{read, write};
+use std::io;
 use std::path::PathBuf;
 
-use color_eyre::Result;
 use dirs::config_dir;
 use serde::{Deserialize, Serialize, Serializer};
 
@@ -56,7 +56,10 @@ impl Config {
     /// # Errors
     ///
     /// Returns an error if it fails to save the configuration.
-    pub fn add_email_config(&mut self, email: EmailConfig) -> Result<()> {
+    pub fn add_email_config(
+        &mut self,
+        email: EmailConfig,
+    ) -> Result<(), SaveError> {
         self.emails.insert(email);
         self.save()
     }
@@ -78,10 +81,11 @@ impl Config {
     /// # Errors
     ///
     /// Returns an error if the file is in an invalid format.
-    pub fn load() -> Result<Self> {
+    pub fn load() -> Result<Self, LoadError> {
         let path = Self::path();
         if path.exists() {
-            Ok(postcard::from_bytes(&read(path)?)?)
+            postcard::from_bytes(&read(path).map_err(LoadError::ReadFailure)?)
+                .map_err(LoadError::InvalidData)
         } else {
             Ok(Self::default())
         }
@@ -93,9 +97,39 @@ impl Config {
     }
 
     /// Saves the config.
-    fn save(&self) -> Result<()> {
-        Ok(write(Self::path(), postcard::to_allocvec(self)?)?)
+    fn save(&self) -> Result<(), SaveError> {
+        write(
+            Self::path(),
+            postcard::to_allocvec(self).map_err(SaveError::InvalidData)?,
+        )
+        .map_err(SaveError::WriteFailure)
     }
+}
+
+#[derive(Debug)]
+#[expect(clippy::exhaustive_enums, reason = "internal use")]
+#[allow(
+    clippy::allow_attributes,
+    missing_docs,
+    clippy::missing_docs_in_private_items,
+    reason = "err"
+)]
+pub enum SaveError {
+    InvalidData(postcard::Error),
+    WriteFailure(io::Error),
+}
+
+#[derive(Debug)]
+#[expect(clippy::exhaustive_enums, reason = "internal use")]
+#[allow(
+    clippy::allow_attributes,
+    missing_docs,
+    clippy::missing_docs_in_private_items,
+    reason = "err"
+)]
+pub enum LoadError {
+    InvalidData(postcard::Error),
+    ReadFailure(io::Error),
 }
 
 /// Deserialises a [`Arc<str>`].

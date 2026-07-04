@@ -5,8 +5,6 @@ edition = "2024"
 
 [dependencies]
 async-imap.workspace = true
-color-eyre.workspace = true
-dotenv.workspace = true
 sqlx.workspace = true
 tokio.workspace = true
 tokio-native-tls.workspace = true

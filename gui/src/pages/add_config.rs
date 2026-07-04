@@ -19,12 +19,18 @@ use crate::Page;
 )]
 pub struct AddConfigPage {
     domain: Arc<str>,
+    error: &'static str,
     password: Arc<str>,
     port: u16,
     user: Arc<str>,
 }
 
 impl AddConfigPage {
+    /// Displays an error to the user.
+    pub const fn error(&mut self, msg: &'static str) {
+        self.error = msg;
+    }
+
     /// Makes an [`EmailConfig`] from the form data.
     fn to_cfg(&self) -> EmailConfig {
         EmailConfig::new(

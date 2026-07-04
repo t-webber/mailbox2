@@ -2,15 +2,16 @@ extern crate alloc;
 use alloc::sync::Arc;
 
 use async_imap::Session;
-use color_eyre::Result;
-use dotenv::dotenv;
-use mailbox_shared::{EmailConfig, Provider};
+use async_imap::error::Error as ImapError;
+use mailbox_shared::EmailConfig;
 use tokio::net::TcpStream;
 use tokio_native_tls::TlsStream;
 
 use crate::body::EmailBody;
 use crate::header::Header;
-use crate::imap::{connect_imap, fetch_body, fetch_headers};
+use crate::imap::{
+    FetchBodyError, FetchHeadersError, ImageConnectionError, connect_imap, fetch_body, fetch_headers
+};
 
 /// Provider for email connections.
 pub struct EmailProvider {
@@ -18,24 +19,38 @@ pub struct EmailProvider {
     session: Session<TlsStream<TcpStream>>,
 }
 
-impl Provider for EmailProvider {
-    type Auth = EmailConfig;
-    type Message = EmailBody;
-    type Room = Header;
-
-    async fn auth(config: &EmailConfig) -> Result<Self> {
-        dotenv()?;
+impl EmailProvider {
+    /// Authenticates a configuration into a provider.
+    ///
+    /// # Errors
+    ///
+    /// Cf. [`ImageConnectionError`].
+    pub async fn auth(
+        config: &EmailConfig,
+    ) -> Result<Self, ImageConnectionError> {
         Ok(Self { session: connect_imap(config).await? })
     }
 
-    async fn get_messages(
+    /// Returns the body of an email.
+    ///
+    /// # Errors
+    ///
+    /// Cf. [`FetchBodyError`].
+    pub async fn get_body(
         &mut self,
-        room: &Self::Room,
-    ) -> Result<Vec<Self::Message>> {
-        Ok(vec![fetch_body(&mut self.session, "INBOX", room.uid).await?])
+        uid: u32,
+    ) -> Result<Vec<EmailBody>, FetchBodyError> {
+        Ok(vec![fetch_body(&mut self.session, "INBOX", uid).await?])
     }
 
-    async fn get_rooms(&mut self) -> Result<Vec<Header>> {
+    /// Returns the list of headers.
+    ///
+    /// # Errors
+    ///
+    /// Cf. [`FetchHeadersError`].
+    pub async fn get_headers(
+        &mut self,
+    ) -> Result<(Vec<Header>, Vec<ImapError>), FetchHeadersError> {
         fetch_headers(&mut self.session, Arc::from("INBOX")).await
     }
 }

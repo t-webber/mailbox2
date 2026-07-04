@@ -20,4 +20,6 @@ mod subject_decoder;
 #[cfg(test)]
 mod test_subject_decoder;
 
+pub use body::EmailBody;
+pub use imap::ImageConnectionError;
 pub use provider::EmailProvider;
