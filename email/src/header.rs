@@ -4,7 +4,6 @@ use alloc::borrow::Cow;
 use alloc::sync::Arc;
 
 use async_imap::imap_proto::{Address, Envelope};
-use mailbox_shared::Room;
 
 use crate::subject_decoder::decode_subject;
 
@@ -81,8 +80,9 @@ impl Header {
     }
 }
 
-impl Room for Header {
-    fn debug(&self) -> String {
+impl Header {
+    /// Pretty-print for cli usage.
+    pub fn debug(&self) -> String {
         let Self {
             bcc,
             cc,
@@ -118,12 +118,14 @@ impl Room for Header {
         lines.join("\n")
     }
 
-    fn name(&self) -> Cow<'_, str> {
-        self.from.join(", ").into()
+    /// Returns the list of senders.
+    pub fn from(&self) -> String {
+        self.from.join(", ")
     }
 
-    fn overview(&self) -> Cow<'_, str> {
-        self.subject.as_str().into()
+    /// Returns the subject.
+    pub const fn subject(&self) -> &str {
+        self.subject.as_str()
     }
 }
 

@@ -1,6 +1,4 @@
-use color_eyre::Result;
-use mailbox_shared::Message;
-use mailparse::{DispositionType, ParsedMail, parse_mail};
+use mailparse::{DispositionType, MailParseError, ParsedMail, parse_mail};
 
 /// An attached file.
 #[derive(Debug)]
@@ -26,7 +24,7 @@ pub struct EmailBody {
 
 impl EmailBody {
     /// Adds an email part to the current email body.
-    fn add(&mut self, part: &ParsedMail<'_>) -> Result<()> {
+    fn add(&mut self, part: &ParsedMail<'_>) -> Result<(), MailParseError> {
         let mime = &part.ctype.mimetype;
         let disposition = part.get_content_disposition();
         if disposition.disposition == DispositionType::Attachment {
@@ -50,16 +48,9 @@ impl EmailBody {
         Ok(())
     }
 
-    /// Parses an email body from raw bytes.
-    pub fn parse(raw: &[u8]) -> Result<Self> {
-        let mut this = Self::default();
-        this.add(&parse_mail(raw)?)?;
-        Ok(this)
-    }
-}
-
-impl Message for EmailBody {
-    fn debug(&self) -> String {
+    /// Pretty-print for cli usage.
+    #[must_use]
+    pub fn debug(&self) -> String {
         format!(
             "{}\n==> attachements: {}",
             self.txt,
@@ -69,5 +60,16 @@ impl Message for EmailBody {
                 .collect::<Vec<_>>()
                 .join(", ")
         )
+    }
+
+    /// Parses an email body from raw bytes.
+    ///
+    /// # Errors
+    ///
+    /// Cf. [`MailParseError`].
+    pub fn parse(raw: &[u8]) -> Result<Self, MailParseError> {
+        let mut this = Self::default();
+        this.add(&parse_mail(raw)?)?;
+        Ok(this)
     }
 }

@@ -28,11 +28,10 @@ extern crate alloc;
 use alloc::sync::Arc;
 use std::sync::{Mutex, PoisonError};
 
-use color_eyre::Result;
 use iced::widget::{button, column, text};
 use iced::{Element, Task};
-use mailbox_email::EmailProvider;
-use mailbox_shared::{Config, EmailConfig, Provider as _};
+use mailbox_email::{EmailProvider, ImageConnectionError};
+use mailbox_shared::{Config, EmailConfig, LoadError};
 
 use crate::pages::add_config::AddConfigPage;
 
@@ -73,9 +72,19 @@ impl GuiApp {
     async fn auth(
         config: EmailConfig,
         providers: Arc<Mutex<Vec<EmailProvider>>>,
-    ) {
-        let provider = EmailProvider::auth(&config).await.unwrap();
-        providers.lock().unwrap().push(provider);
+    ) -> Result<(), ImageConnectionError> {
+        let provider = EmailProvider::auth(&config).await?;
+        providers.lock().unwrap_or_else(PoisonError::into_inner).push(provider);
+        Ok(())
+    }
+
+    /// Displays an error to the user.
+    const fn error(&mut self, msg: &'static str) {
+        match &mut self.page {
+            GuiAppPage::AddConfig(add_config_page) =>
+                add_config_page.error(msg),
+            GuiAppPage::Main => (),
+        }
     }
 
     /// Loads the configuration and returns a default [`GuiAppPage`].
@@ -95,15 +104,33 @@ impl GuiApp {
     /// # Errors
     ///
     /// Returns an error if the rendering or configuration loading fails.
-    pub fn run() -> Result<()> {
-        let config = Mutex::new(Config::load()?);
-        let boot = move || {
-            Self::new(&config.lock().unwrap_or_else(PoisonError::into_inner))
-        };
-        let app = iced::application(boot, Self::update, Self::view);
-        app.run()?;
+    pub fn run() -> Result<(), GuiError> {
+        let config = Mutex::new(Config::load().map_err(GuiError::Load)?);
+        iced::application(
+            move || {
+                Self::new(
+                    &config.lock().unwrap_or_else(PoisonError::into_inner),
+                )
+            },
+            Self::update,
+            Self::view,
+        )
+        .run()
+        .map_err(GuiError::Runtime)?;
         Ok(())
     }
+}
+
+/// Gui App error.
+#[expect(clippy::exhaustive_enums, reason = "same versioning")]
+#[derive(Debug)]
+pub enum GuiError {
+    /// Failed to load initial data before opening the app.
+    Load(LoadError),
+    /// Failure during runtime.
+    ///
+    /// The app unexpected panicked.
+    Runtime(iced::Error),
 }
 
 /// Application messages.
@@ -111,6 +138,10 @@ impl GuiApp {
 enum Message {
     /// Messages for the add config page.
     AddPage(<AddConfigPage as Page>::Message),
+    /// Credentials are invalid.
+    InvalidCredentials,
+    /// Failed to establish connection.
+    NetworkIssue,
     /// Message for when a provider is added.
     ProviderAdded,
 }
@@ -127,10 +158,14 @@ impl Page for GuiApp {
                 {
                     return Task::perform(
                         Self::auth(config, Arc::clone(&self.providers)),
-                        |()| Message::ProviderAdded,
+                        |res| {
+                            match res { Ok(()) => Message::ProviderAdded, Err(ImageConnectionError::Login(_)) => Message::InvalidCredentials, Err(ImageConnectionError::TlsError(_) | ImageConnectionError::UnreachableDomainThrougnTls(_) | ImageConnectionError::UnreachableDomain(_)) => Message::NetworkIssue, }
+                        },
                     );
                 },
             Message::ProviderAdded => self.page = GuiAppPage::Main,
+            Message::InvalidCredentials => self.error("Invalid credentials"),
+            Message::NetworkIssue => self.error("Network failure"),
         }
         Task::none()
     }

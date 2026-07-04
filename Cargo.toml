@@ -6,8 +6,6 @@ resolver = "3"
 async-imap = { version = "0.11.2", default-features = false, features = [
   "runtime-tokio",
 ] }
-color-eyre = "0.6.5"
-dotenv = "0.15.0"
 sqlx = { version = "0.9.0", default-features = false, features = [
   "runtime-tokio",
   "sqlite",
