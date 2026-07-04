@@ -8,6 +8,7 @@ color-eyre.workspace = true
 dirs.workspace = true
 postcard.workspace = true
 serde.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true
