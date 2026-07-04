@@ -1,31 +1,36 @@
+extern crate alloc;
+use alloc::sync::Arc;
 use std::collections::HashSet;
 use std::fs::{read, write};
 use std::path::PathBuf;
 
 use color_eyre::Result;
 use dirs::config_dir;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 
 /// Configuration for one email provider.
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct EmailConfig {
     /// Domain of the email (server url).
-    domain: String,
+    #[serde(deserialize_with = "deser_rc", serialize_with = "ser_rc")]
+    domain: Arc<str>,
     /// Password or token.
-    password: String,
+    #[serde(deserialize_with = "deser_rc", serialize_with = "ser_rc")]
+    password: Arc<str>,
     /// Port to hit (usually 993 for IMAPS).
     port: u16,
     /// Username (usually the email).
-    user: String,
+    #[serde(deserialize_with = "deser_rc", serialize_with = "ser_rc")]
+    user: Arc<str>,
 }
 
 impl EmailConfig {
     /// Creates a config from these values.
     #[must_use]
     pub const fn new(
-        user: String,
-        password: String,
-        domain: String,
+        user: Arc<str>,
+        password: Arc<str>,
+        domain: Arc<str>,
         port: u16,
     ) -> Self {
         Self { domain, password, port, user }
@@ -62,6 +67,12 @@ impl Config {
         self.emails.iter().next()
     }
 
+    /// Returns the list of email configurations.
+    #[must_use]
+    pub fn into_email_cfgs(self) -> HashSet<EmailConfig> {
+        self.emails
+    }
+
     /// Loads the configuration from the disk.
     ///
     /// # Errors
@@ -85,4 +96,16 @@ impl Config {
     fn save(&self) -> Result<()> {
         Ok(write(Self::path(), postcard::to_allocvec(self)?)?)
     }
+}
+
+/// Deserialises a [`Arc<str>`].
+fn deser_rc<'de, D>(deser: D) -> Result<Arc<str>, D::Error>
+where D: serde::Deserializer<'de> {
+    Ok(Arc::from(String::deserialize(deser)?))
+}
+
+/// Serialises a [`Arc<str>`].
+fn ser_rc<S>(data: &Arc<str>, ser: S) -> Result<S::Ok, S::Error>
+where S: Serializer {
+    ser.serialize_str(data)
 }

@@ -35,9 +35,9 @@ pub async fn cli() -> color_eyre::Result<()> {
     } else {
         println!("No configuration found");
         let email = EmailConfig::new(
-            prompt("user (e.g. bob@bob.com): ")?,
-            prompt("password: ")?,
-            prompt("domain (e.g. imap.google.com): ")?,
+            prompt("user (e.g. bob@bob.com): ")?.into(),
+            prompt("password: ")?.into(),
+            prompt("domain (e.g. imap.google.com): ")?.into(),
             prompt("port (e.g. 993): ")?.parse()?,
         );
         let provider = EmailProvider::auth(&email).await?;

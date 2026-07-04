@@ -1625,7 +1625,9 @@ version = "0.1.0"
 dependencies = [
  "color-eyre",
  "iced",
+ "mailbox-email",
  "mailbox-shared",
+ "tokio",
 ]
 
 [[package]]
@@ -1636,6 +1638,7 @@ dependencies = [
  "dirs",
  "postcard",
  "serde",
+ "tokio",
 ]
 
 [[package]]
