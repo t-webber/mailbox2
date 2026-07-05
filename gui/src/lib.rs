@@ -33,6 +33,7 @@ use iced::widget::{button, column, container, text};
 use iced::{Element, Length, Task};
 use mailbox_email::{EmailProvider, ImageConnectionError};
 use mailbox_shared::{Config, EmailConfig, LoadError};
+use tokio::time::{Duration, timeout};
 
 use crate::pages::add_config::AddConfigPage;
 
@@ -73,19 +74,20 @@ impl GuiApp {
     async fn auth(
         config: EmailConfig,
         providers: Arc<Mutex<Vec<EmailProvider>>>,
-    ) -> Result<(), ImageConnectionError> {
-        let provider = EmailProvider::auth(&config).await?;
+    ) -> Result<(), &'static str> {
+        let provider =
+            EmailProvider::auth(&config).await.map_err(|err| match err {
+                ImageConnectionError::Login(_) => "Invalid credentials",
+                ImageConnectionError::TlsError(_)
+                | ImageConnectionError::UnreachableDomain(_)
+                | ImageConnectionError::UnreachableDomainThrougnTls(_) =>
+                    "Failed to reached specified server",
+            })?;
+        Config::from(config)
+            .save()
+            .map_err(|_err| "Failed to save configuration")?;
         providers.lock().unwrap_or_else(PoisonError::into_inner).push(provider);
         Ok(())
-    }
-
-    /// Displays an error to the user.
-    const fn error(&mut self, msg: &'static str) {
-        match &mut self.page {
-            GuiAppPage::AddConfig(add_config_page) =>
-                add_config_page.error(msg),
-            GuiAppPage::Main => (),
-        }
     }
 
     /// Loads the configuration and returns a default [`GuiAppPage`].
@@ -139,10 +141,6 @@ pub enum GuiError {
 enum Message {
     /// Messages for the add config page.
     AddPage(<AddConfigPage as Page>::Message),
-    /// Credentials are invalid.
-    InvalidCredentials,
-    /// Failed to establish connection.
-    NetworkIssue,
     /// Message for when a provider is added.
     ProviderAdded,
 }
@@ -161,16 +159,28 @@ impl Page for GuiApp {
                     && let Some(config) = page.update(msg)
                 {
                     page.loading(true);
+                    let providers = Arc::clone(&self.providers);
                     return Task::perform(
-                        Self::auth(config, Arc::clone(&self.providers)),
-                        |res| {
-                            match res { Ok(()) => Message::ProviderAdded, Err(ImageConnectionError::Login(_)) => Message::InvalidCredentials, Err(ImageConnectionError::TlsError(_) | ImageConnectionError::UnreachableDomainThrougnTls(_) | ImageConnectionError::UnreachableDomain(_)) => Message::NetworkIssue, }
+                        async {
+                            timeout(Duration::from_mins(1), async {
+                                Self::auth(config, providers).await
+                            })
+                            .await
+                        },
+                        |res| match res {
+                            Ok(Ok(())) => Message::ProviderAdded,
+                            Ok(Err(str)) => Message::AddPage(
+                                <AddConfigPage as Page>::Message::Error(str),
+                            ),
+                            Err(_) => Message::AddPage(
+                                <AddConfigPage as Page>::Message::Error(
+                                    "Failed to connect: timed out",
+                                ),
+                            ),
                         },
                     );
                 },
             Message::ProviderAdded => self.page = GuiAppPage::Main,
-            Message::InvalidCredentials => self.error("Invalid credentials"),
-            Message::NetworkIssue => self.error("Failed to reach given server"),
         }
         Task::none()
     }
