@@ -28,8 +28,9 @@ extern crate alloc;
 use alloc::sync::Arc;
 use std::sync::{Mutex, PoisonError};
 
-use iced::widget::{button, column, text};
-use iced::{Element, Task};
+use iced::widget::container::Style;
+use iced::widget::{button, column, container, text};
+use iced::{Element, Length, Task};
 use mailbox_email::{EmailProvider, ImageConnectionError};
 use mailbox_shared::{Config, EmailConfig, LoadError};
 
@@ -134,7 +135,7 @@ pub enum GuiError {
 }
 
 /// Application messages.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Message {
     /// Messages for the add config page.
     AddPage(<AddConfigPage as Page>::Message),
@@ -151,11 +152,15 @@ impl Page for GuiApp {
     type Update = Task<Self::Message>;
 
     fn update(&mut self, message: Self::Message) -> Self::Update {
+        if let GuiAppPage::AddConfig(page) = &mut self.page {
+            page.loading(false);
+        }
         match message {
             Message::AddPage(msg) =>
                 if let GuiAppPage::AddConfig(page) = &mut self.page
                     && let Some(config) = page.update(msg)
                 {
+                    page.loading(true);
                     return Task::perform(
                         Self::auth(config, Arc::clone(&self.providers)),
                         |res| {
@@ -165,15 +170,23 @@ impl Page for GuiApp {
                 },
             Message::ProviderAdded => self.page = GuiAppPage::Main,
             Message::InvalidCredentials => self.error("Invalid credentials"),
-            Message::NetworkIssue => self.error("Network failure"),
+            Message::NetworkIssue => self.error("Failed to reach given server"),
         }
         Task::none()
     }
 
     fn view(&self) -> Element<'_, Self::Message> {
-        match &self.page {
+        let view = match &self.page {
             GuiAppPage::AddConfig(page) => page.view().map(Message::AddPage),
             GuiAppPage::Main => column!(text("hi"), button("click")).into(),
-        }
+        };
+        container(view)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(|_theme| Style {
+                background: Some(iced::Background::Color(iced::Color::BLACK)),
+                ..Default::default()
+            })
+            .into()
     }
 }
