@@ -27,11 +27,6 @@ pub struct AddConfigPage {
 }
 
 impl AddConfigPage {
-    /// Displays an error to the user.
-    pub const fn error(&mut self, msg: &'static str) {
-        self.error = msg;
-    }
-
     /// Marks the UI as loading.
     pub const fn loading(&mut self, loading: bool) {
         self.loading = loading;
@@ -68,16 +63,17 @@ impl Page for AddConfigPage {
                 },
             Message::Submit =>
                 if self.user.is_empty() {
-                    self.error("Missing user");
+                    self.error = "Missing user";
                 } else if self.password.is_empty() {
-                    self.error("Missing password");
+                    self.error = "Missing password";
                 } else if self.domain.is_empty() {
-                    self.error("Missing domain");
+                    self.error = "Missing domain";
                 } else if self.port == 0 {
-                    self.error("Missing port");
+                    self.error = "Missing port";
                 } else {
                     return Some(self.to_cfg());
                 },
+            Message::Error(error) => self.error = error,
         }
         None
     }
@@ -135,6 +131,7 @@ impl Page for AddConfigPage {
 #[derive(Clone, Debug)]
 pub enum Message {
     Domain(Arc<str>),
+    Error(&'static str),
     Password(Arc<str>),
     Port(Arc<str>),
     Submit,

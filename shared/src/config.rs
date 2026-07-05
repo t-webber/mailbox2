@@ -1,11 +1,11 @@
 extern crate alloc;
 use alloc::sync::Arc;
 use std::collections::HashSet;
-use std::fs::{read, write};
+use std::fs::{self, read, write};
 use std::io;
 use std::path::PathBuf;
 
-use dirs::config_dir;
+use dirs::data_dir;
 use serde::{Deserialize, Serialize, Serializer};
 
 /// Configuration for one email provider.
@@ -48,6 +48,12 @@ impl EmailConfig {
 pub struct Config {
     /// List of email providers.
     emails: HashSet<EmailConfig>,
+}
+
+impl From<EmailConfig> for Config {
+    fn from(value: EmailConfig) -> Self {
+        Self { emails: HashSet::from([value]) }
+    }
 }
 
 impl Config {
@@ -93,13 +99,21 @@ impl Config {
 
     /// Returns the path to the configuration file.
     fn path() -> PathBuf {
-        config_dir().unwrap_or_default().join(".mailbox")
+        data_dir().unwrap_or_default().join(".mailbox")
     }
 
     /// Saves the config.
-    fn save(&self) -> Result<(), SaveError> {
+    ///
+    /// # Errors
+    ///
+    /// Fails on data corruption or io errors.
+    pub fn save(&self) -> Result<(), SaveError> {
+        let path = Self::path();
+        if let Some(parent) = path.parent() {
+            drop(fs::create_dir_all(parent));
+        }
         write(
-            Self::path(),
+            path,
             postcard::to_allocvec(self).map_err(SaveError::InvalidData)?,
         )
         .map_err(SaveError::WriteFailure)
