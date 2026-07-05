@@ -14,6 +14,7 @@ use crate::imap::{
 };
 
 /// Provider for email connections.
+#[derive(Debug)]
 pub struct EmailProvider {
     /// Imap session.
     session: Session<TlsStream<TcpStream>>,
