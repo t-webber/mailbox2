@@ -9,8 +9,10 @@ use dirs::data_dir;
 use serde::{Deserialize, Serialize, Serializer};
 
 /// Configuration for one email provider.
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone)]
 pub struct EmailConfig {
+    /// Alias, to display it nicely in the app.
+    alias: char,
     /// Domain of the email (server url).
     #[serde(deserialize_with = "deser_rc", serialize_with = "ser_rc")]
     domain: Arc<str>,
@@ -28,12 +30,13 @@ impl EmailConfig {
     /// Creates a config from these values.
     #[must_use]
     pub const fn new(
+        alias: char,
         user: Arc<str>,
         password: Arc<str>,
         domain: Arc<str>,
         port: u16,
     ) -> Self {
-        Self { domain, password, port, user }
+        Self { alias, domain, password, port, user }
     }
 
     /// Returns the configuration values.
@@ -50,12 +53,6 @@ pub struct Config {
     emails: HashSet<EmailConfig>,
 }
 
-impl From<EmailConfig> for Config {
-    fn from(value: EmailConfig) -> Self {
-        Self { emails: HashSet::from([value]) }
-    }
-}
-
 impl Config {
     /// Adds a new email configuration.
     ///
@@ -70,16 +67,16 @@ impl Config {
         self.save()
     }
 
+    /// Returns the list of email configurations.
+    #[must_use]
+    pub const fn as_email_cfgs(&self) -> &HashSet<EmailConfig> {
+        &self.emails
+    }
+
     /// Returns the first email configuration, if there is one.
     #[must_use]
     pub fn as_first_email_config(&self) -> Option<&EmailConfig> {
         self.emails.iter().next()
-    }
-
-    /// Returns the list of email configurations.
-    #[must_use]
-    pub fn into_email_cfgs(self) -> HashSet<EmailConfig> {
-        self.emails
     }
 
     /// Loads the configuration from the disk.

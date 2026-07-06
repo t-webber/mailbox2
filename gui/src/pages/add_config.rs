@@ -18,6 +18,7 @@ use crate::Page;
     reason = "dup doc"
 )]
 pub struct AddConfigPage {
+    alias: Option<char>,
     domain: Arc<str>,
     error: &'static str,
     loading: bool,
@@ -35,6 +36,7 @@ impl AddConfigPage {
     /// Makes an [`EmailConfig`] from the form data.
     fn to_cfg(&self) -> EmailConfig {
         EmailConfig::new(
+            self.alias.unwrap_or_default(),
             Arc::clone(&self.user),
             Arc::clone(&self.password),
             Arc::clone(&self.domain),
@@ -52,6 +54,12 @@ impl Page for AddConfigPage {
             return None;
         }
         match message {
+            Message::Alias(ch) => {
+                if self.alias.is_some() && ch.is_some() {
+                    self.error = "Alias can't contain more than 1 character";
+                }
+                self.alias = ch;
+            }
             Message::Domain(str) => self.domain = str,
             Message::User(usr) => self.user = usr,
             Message::Password(psk) => self.password = psk,
@@ -60,9 +68,14 @@ impl Page for AddConfigPage {
                     self.port = 0;
                 } else if let Ok(nb) = port.parse() {
                     self.port = nb;
+                } else {
+                    self.error =
+                        "Port must be a valid unsigned 16-bits integer";
                 },
             Message::Submit =>
-                if self.user.is_empty() {
+                if self.alias.is_none() {
+                    self.error = "Missing alias";
+                } else if self.user.is_empty() {
                     self.error = "Missing user";
                 } else if self.password.is_empty() {
                     self.error = "Missing password";
@@ -81,14 +94,19 @@ impl Page for AddConfigPage {
     fn view(&self) -> Element<'_, Message> {
         let cols = column!(
             text("New email provider").color(Color::WHITE),
-            text_input("User", &self.user)
+            text_input(
+                "Alias for displaying it in this app",
+                &self.alias.map(|ch| ch.to_string()).unwrap_or_default()
+            )
+            .on_input(|x| Message::Alias(x.chars().last())),
+            text_input("User (email)", &self.user)
                 .on_input(|x| Message::User(x.into())),
             text_input("Password", &self.password)
                 .on_input(|x| Message::Password(x.into())),
-            text_input("Domain", &self.domain)
+            text_input("Domain (e.g. imap.gmail.com)", &self.domain)
                 .on_input(|x| Message::Domain(x.into())),
             text_input(
-                "Port",
+                "Port (e.g. 993)",
                 &if self.port == 0 {
                     String::new()
                 } else {
@@ -130,6 +148,7 @@ impl Page for AddConfigPage {
 )]
 #[derive(Clone, Debug)]
 pub enum Message {
+    Alias(Option<char>),
     Domain(Arc<str>),
     Error(&'static str),
     Password(Arc<str>),
