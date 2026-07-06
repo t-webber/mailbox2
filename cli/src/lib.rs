@@ -40,6 +40,7 @@ pub async fn cli() {
     } else {
         println!("No configuration found");
         let email = EmailConfig::new(
+            ' ',
             prompt("user (e.g. bob@bob.com): ").into(),
             prompt("password: ").into(),
             prompt("domain (e.g. imap.google.com): ").into(),

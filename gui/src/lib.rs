@@ -21,20 +21,21 @@
 //!       ̅ ̅ ̅ ̅ ̅ ̅ ̅ ̅ ̅ ̅
 //! .
 
+/// Handles authentication.
+mod auth;
 /// List of pages to display on the screen.
 mod pages;
 
 extern crate alloc;
 use alloc::sync::Arc;
+use core::mem::take;
 use std::sync::{Mutex, PoisonError};
 
-use iced::widget::container::Style;
-use iced::widget::{button, column, container, text};
-use iced::{Element, Length, Task};
-use mailbox_email::{EmailProvider, ImageConnectionError};
-use mailbox_shared::{Config, EmailConfig, LoadError};
-use tokio::time::{Duration, timeout};
+use iced::{Element, Task};
+use mailbox_email::EmailProvider;
+use mailbox_shared::{Config, LoadError};
 
+use crate::pages::Message;
 use crate::pages::add_config::AddConfigPage;
 
 /// Traits and types required for a page to be rendered and updated.
@@ -54,6 +55,8 @@ trait Page {
 /// Gui Application state.
 #[non_exhaustive]
 pub struct GuiApp {
+    /// Configuration.
+    config: Arc<Mutex<Config>>,
     /// Current page.
     page: GuiAppPage,
     /// List of providers.
@@ -65,41 +68,32 @@ pub struct GuiApp {
 pub enum GuiAppPage {
     /// Configuration is empty, open a page to add a provider.
     AddConfig(AddConfigPage),
+    /// Authenticate the load configurations.
+    Authenticate,
     /// Configuration is not empty, open default page.
     Main,
 }
 
 impl GuiApp {
-    /// Authenticates with a configuration and gets a new provider.
-    async fn auth(
-        config: EmailConfig,
-        providers: Arc<Mutex<Vec<EmailProvider>>>,
-    ) -> Result<(), &'static str> {
-        let provider =
-            EmailProvider::auth(&config).await.map_err(|err| match err {
-                ImageConnectionError::Login(_) => "Invalid credentials",
-                ImageConnectionError::TlsError(_)
-                | ImageConnectionError::UnreachableDomain(_)
-                | ImageConnectionError::UnreachableDomainThrougnTls(_) =>
-                    "Failed to reached specified server",
-            })?;
-        Config::from(config)
-            .save()
-            .map_err(|_err| "Failed to save configuration")?;
-        providers.lock().unwrap_or_else(PoisonError::into_inner).push(provider);
-        Ok(())
-    }
-
     /// Loads the configuration and returns a default [`GuiAppPage`].
-    fn new(cfg: &Config) -> Self {
-        Self {
-            page: if cfg.as_first_email_config().is_none() {
-                GuiAppPage::AddConfig(AddConfigPage::default())
-            } else {
-                GuiAppPage::Main
+    fn new(config: &mut Config) -> (Self, Task<Message>) {
+        let has_configs = config.as_first_email_config().is_some();
+        (
+            Self {
+                page: if has_configs {
+                    GuiAppPage::Authenticate
+                } else {
+                    GuiAppPage::AddConfig(AddConfigPage::default())
+                },
+                providers: Arc::default(),
+                config: Arc::new(Mutex::new(take(config))),
             },
-            providers: Arc::default(),
-        }
+            if has_configs {
+                Task::done(Message::Authenticate)
+            } else {
+                Task::none()
+            },
+        )
     }
 
     /// Runs the gui application.
@@ -112,7 +106,7 @@ impl GuiApp {
         iced::application(
             move || {
                 Self::new(
-                    &config.lock().unwrap_or_else(PoisonError::into_inner),
+                    &mut config.lock().unwrap_or_else(PoisonError::into_inner),
                 )
             },
             Self::update,
@@ -134,69 +128,4 @@ pub enum GuiError {
     ///
     /// The app unexpected panicked.
     Runtime(iced::Error),
-}
-
-/// Application messages.
-#[derive(Clone, Debug)]
-enum Message {
-    /// Messages for the add config page.
-    AddPage(<AddConfigPage as Page>::Message),
-    /// Message for when a provider is added.
-    ProviderAdded,
-}
-
-impl Page for GuiApp {
-    type Message = Message;
-    type Update = Task<Self::Message>;
-
-    fn update(&mut self, message: Self::Message) -> Self::Update {
-        if let GuiAppPage::AddConfig(page) = &mut self.page {
-            page.loading(false);
-        }
-        match message {
-            Message::AddPage(msg) =>
-                if let GuiAppPage::AddConfig(page) = &mut self.page
-                    && let Some(config) = page.update(msg)
-                {
-                    page.loading(true);
-                    let providers = Arc::clone(&self.providers);
-                    return Task::perform(
-                        async {
-                            timeout(Duration::from_mins(1), async {
-                                Self::auth(config, providers).await
-                            })
-                            .await
-                        },
-                        |res| match res {
-                            Ok(Ok(())) => Message::ProviderAdded,
-                            Ok(Err(str)) => Message::AddPage(
-                                <AddConfigPage as Page>::Message::Error(str),
-                            ),
-                            Err(_) => Message::AddPage(
-                                <AddConfigPage as Page>::Message::Error(
-                                    "Failed to connect: timed out",
-                                ),
-                            ),
-                        },
-                    );
-                },
-            Message::ProviderAdded => self.page = GuiAppPage::Main,
-        }
-        Task::none()
-    }
-
-    fn view(&self) -> Element<'_, Self::Message> {
-        let view = match &self.page {
-            GuiAppPage::AddConfig(page) => page.view().map(Message::AddPage),
-            GuiAppPage::Main => column!(text("hi"), button("click")).into(),
-        };
-        container(view)
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .style(|_theme| Style {
-                background: Some(iced::Background::Color(iced::Color::BLACK)),
-                ..Default::default()
-            })
-            .into()
-    }
 }
