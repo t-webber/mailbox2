@@ -1,29 +1,29 @@
 extern crate alloc;
 use alloc::sync::Arc;
+use std::io;
 
-use async_imap::Session;
 use async_imap::error::Error as ImapError;
-use mailbox_shared::EmailConfig;
+use async_imap::{Client, Session};
+use mailbox_shared::{ArMx, EmailConfig, StdMutex, TokioMutex, error};
+use mailparse::MailParseError;
 use tokio::net::TcpStream;
-use tokio_native_tls::TlsStream;
+use tokio_native_tls::{TlsStream, native_tls};
+use tokio_stream::StreamExt as _;
 
 use crate::body::EmailBody;
 use crate::header::EmailHeader;
-use crate::imap::{
-    FetchBodyError, FetchHeadersError, ImageConnectionError, connect_imap, fetch_body, fetch_headers
-};
 
 /// Provider for email connections.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EmailProvider {
     /// Alias to use to name the provider.
     alias: char,
     /// Imap session.
-    session: Session<TlsStream<TcpStream>>,
+    session: Arc<TokioMutex<Session<TlsStream<TcpStream>>>>,
 }
 
 impl EmailProvider {
-    /// Returns the alias of the config.
+    /// Returns the alias of the provider.
     #[must_use]
     pub const fn alias(&self) -> char {
         self.alias
@@ -36,8 +36,24 @@ impl EmailProvider {
     /// Cf. [`ImageConnectionError`].
     pub async fn auth(
         config: &EmailConfig,
-    ) -> Result<Self, ImageConnectionError> {
-        Ok(Self { alias: config.alias(), session: connect_imap(config).await? })
+    ) -> Result<Self, ImapConnectionError> {
+        let (user, password, domain, port) = config.values();
+        let tcp = TcpStream::connect((domain, port))
+            .await
+            .map_err(ImapConnectionError::UnreachableDomain)?;
+        let tls = native_tls::TlsConnector::builder()
+            .build()
+            .map_err(ImapConnectionError::TlsError)?;
+        let tls_stream = tokio_native_tls::TlsConnector::from(tls)
+            .connect(domain, tcp)
+            .await
+            .map_err(ImapConnectionError::UnreachableDomainThrougnTls)?;
+        let session = Client::new(tls_stream)
+            .login(user, password)
+            .await
+            .map_err(|(err, _unauthenticated_client)| err)
+            .map_err(ImapConnectionError::Login)?;
+        Ok(Self { alias: config.alias(), session: Arc::new(session.into()) })
     }
 
     /// Returns the body of an email.
@@ -48,8 +64,22 @@ impl EmailProvider {
     pub async fn get_body(
         &mut self,
         uid: u32,
-    ) -> Result<Vec<EmailBody>, FetchBodyError> {
-        Ok(vec![fetch_body(&mut self.session, "INBOX", uid).await?])
+    ) -> Result<EmailBody, FetchBodyError> {
+        let mut session = self.session.lock().await;
+        session.select("INBOX").await.map_err(FetchBodyError::MailboxSelect)?;
+        let mut stream = session
+            .uid_fetch(uid.to_string(), "BODY.PEEK[]")
+            .await
+            .map_err(FetchBodyError::Request)?;
+        if let Some(message) = stream.next().await
+            && let Some(body) =
+                message.map_err(FetchBodyError::FetchError)?.body()
+        {
+            return EmailBody::parse(body).map_err(FetchBodyError::Parsing);
+        }
+        drop(stream);
+        drop(session);
+        Err(FetchBodyError::NotFound(()))
     }
 
     /// Returns the list of headers.
@@ -59,7 +89,59 @@ impl EmailProvider {
     /// Cf. [`FetchHeadersError`].
     pub async fn get_headers(
         &mut self,
-    ) -> Result<(Vec<EmailHeader>, Vec<ImapError>), FetchHeadersError> {
-        fetch_headers(&mut self.session, Arc::from("INBOX")).await
+    ) -> Result<
+        (Vec<ArMx<EmailHeader>>, Vec<FetchHeadersError>),
+        FetchHeadersError,
+    > {
+        let mut session = self.session.lock().await;
+        let mailbox = Arc::from("INBOX");
+        session
+            .select(&mailbox)
+            .await
+            .map_err(FetchHeadersError::MailboxSelect)?;
+        let mut messages = session
+            .fetch("1:*", "(UID ENVELOPE)")
+            .await
+            .map_err(FetchHeadersError::Request)?;
+        let mut headers = vec![];
+        let mut errors = vec![];
+        while let Some(res_msg) = messages.next().await {
+            match res_msg {
+                Ok(msg) =>
+                    if let Some(envelope) = msg.envelope() {
+                        headers.push(Arc::new(StdMutex::new(
+                            EmailHeader::parse(
+                                envelope,
+                                Arc::clone(&mailbox),
+                                msg.uid.unwrap_or_default(),
+                            ),
+                        )));
+                    },
+                Err(err) => errors.push(FetchHeadersError::Request(err)),
+            }
+        }
+        drop(messages);
+        drop(session);
+        Ok((headers, errors))
     }
 }
+
+error!(ImapConnectionError:
+    Login ImapError: "Invalid credentials",
+    TlsError native_tls::Error: "TLS error",
+    UnreachableDomainThrougnTls native_tls::Error: "Domain unreachable through TLS",
+    UnreachableDomain io::Error: "Domain unreachable",
+);
+
+error!(FetchBodyError:
+    FetchError ImapError: "Failed to fetch headers",
+    MailboxSelect ImapError: "Failed to select mailbox",
+    NotFound (): "This email was deleted",
+    Parsing MailParseError: "Invalid email body format",
+    Request ImapError: "Connection error",
+);
+
+error!(FetchHeadersError:
+    MailboxSelect ImapError: "Failed to select mailbox",
+    Request ImapError: "Connection error",
+);

@@ -11,8 +11,6 @@ mod body;
 mod db;
 /// Structure to handle headers.
 mod header;
-/// Handles interactions with the IMAP protocol.
-mod imap;
 /// Implements the provider trait.
 mod provider;
 /// Decodes the encoded subjects.
@@ -22,5 +20,6 @@ mod test_subject_decoder;
 
 pub use body::EmailBody;
 pub use header::EmailHeader;
-pub use imap::ImageConnectionError;
-pub use provider::EmailProvider;
+pub use provider::{
+    EmailProvider, FetchBodyError, FetchHeadersError, ImapConnectionError
+};

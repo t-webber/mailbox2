@@ -5,9 +5,31 @@ mod config;
 
 extern crate alloc;
 use alloc::sync::Arc;
-use std::sync::Mutex;
+pub use std::sync::Mutex as StdMutex;
 
 pub use config::{Config, EmailConfig, LoadError, SaveError};
+pub use tokio::sync::Mutex as TokioMutex;
+
+/// helper to create error enumerations.
+#[macro_export]
+macro_rules! error {
+    ($name:ident: $($variant:ident $value:ty: $txt:literal,)*) => {
+        #[expect(missing_docs, reason="name explicit enough")]
+        #[derive(Debug)]
+        pub enum $name {
+            $($variant($value)),*
+        }
+
+        impl $name {
+            /// Returns a short message corresponding to the error.
+            pub fn display(&self) -> &'static str {
+                match self {
+                    $(Self::$variant(_) => $txt,)*
+                }
+            }
+        }
+    };
+}
 
 /// locks a mutex and unpoisons the error if poisoned.
 #[macro_export]
@@ -18,4 +40,7 @@ macro_rules! lock {
 }
 
 /// Arc mutex shorthand.
-pub type ArMx<T> = Arc<Mutex<T>>;
+pub type ArMx<T> = Arc<StdMutex<T>>;
+
+/// Async arc mutex shorthand.
+pub type TokioArMx<T> = Arc<TokioMutex<T>>;

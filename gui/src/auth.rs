@@ -2,7 +2,7 @@ extern crate alloc;
 use alloc::sync::Arc;
 use std::sync::{Mutex, PoisonError};
 
-use mailbox_email::{EmailProvider, ImageConnectionError};
+use mailbox_email::EmailProvider;
 use mailbox_shared::{Config, EmailConfig, lock};
 use tokio::task::JoinSet;
 use tokio::time::error::Elapsed;
@@ -71,13 +71,7 @@ impl GuiApp {
         email: &EmailConfig,
     ) -> Result<EmailProvider, &'static str> {
         timeout(Duration::from_mins(1), async {
-            EmailProvider::auth(email).await.map_err(|err| match err {
-                ImageConnectionError::Login(_) => "Invalid credentials",
-                ImageConnectionError::TlsError(_)
-                | ImageConnectionError::UnreachableDomain(_)
-                | ImageConnectionError::UnreachableDomainThrougnTls(_) =>
-                    "Failed to reached specified server",
-            })
+            EmailProvider::auth(email).await.map_err(|err| err.display())
         })
         .await
         .unwrap_or_else(|_: Elapsed| Err("Failed to connect: timed out"))
