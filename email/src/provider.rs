@@ -8,7 +8,7 @@ use tokio::net::TcpStream;
 use tokio_native_tls::TlsStream;
 
 use crate::body::EmailBody;
-use crate::header::Header;
+use crate::header::EmailHeader;
 use crate::imap::{
     FetchBodyError, FetchHeadersError, ImageConnectionError, connect_imap, fetch_body, fetch_headers
 };
@@ -59,7 +59,7 @@ impl EmailProvider {
     /// Cf. [`FetchHeadersError`].
     pub async fn get_headers(
         &mut self,
-    ) -> Result<(Vec<Header>, Vec<ImapError>), FetchHeadersError> {
+    ) -> Result<(Vec<EmailHeader>, Vec<ImapError>), FetchHeadersError> {
         fetch_headers(&mut self.session, Arc::from("INBOX")).await
     }
 }

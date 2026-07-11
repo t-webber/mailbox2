@@ -1,3 +1,5 @@
+/// Lists the headers of the current mailbox.
+mod headers;
 /// Left bar to select the active provider.
 mod select_provider;
 
@@ -6,19 +8,26 @@ extern crate alloc;
 use alloc::sync::Arc;
 use std::sync::Mutex;
 
-use iced::Length;
-use iced::widget::{Space, row};
+use iced::widget::{Space, container, row};
+use iced::{Alignment, Length};
 use mailbox_email::EmailProvider;
+use mailbox_shared::{ArMx, lock};
 
-use crate::pages::main::select_provider::{
-    SelectProviderMsg, SelectProviderPage
-};
+pub use crate::pages::main::headers::HeadersMsg;
+use crate::pages::main::headers::HeadersPage;
+pub use crate::pages::main::select_provider::SelectProviderMsg;
+use crate::pages::main::select_provider::SelectProviderPage;
+use crate::ui::component::txt;
 use crate::{Page, Provider, Providers};
 
 /// Main page for one provider.
 pub struct MainPage {
     /// Error to display.
     error: Option<&'static str>,
+    /// List of headers.
+    headers: HeadersPage,
+    /// Whether the app is ready to show data or not.
+    loading: ArMx<bool>,
     /// Left bar to select the active provider.
     provider_selector: SelectProviderPage,
 }
@@ -30,13 +39,12 @@ impl MainPage {
     }
 
     /// Creates a new page.
-    pub const fn new(
-        current: Arc<Mutex<EmailProvider>>,
-        list: Providers,
-    ) -> Self {
+    pub fn new(current: Arc<Mutex<EmailProvider>>, list: Providers) -> Self {
         Self {
             provider_selector: SelectProviderPage::new(current, list),
+            headers: HeadersPage::default(),
             error: None,
+            loading: Arc::new(true.into()),
         }
     }
 }
@@ -51,10 +59,36 @@ impl Page for MainPage {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
-        row!(self.provider_selector.view(), Space::new().width(Length::Fill))
-            .into()
+        let providers =
+            self.provider_selector.view().map(MainMessage::SelectProvider);
+        if *lock!(self.loading) {
+            row!(
+                providers,
+                container(
+                    txt("loading...")
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center)
+                )
+            )
+        } else {
+            row!(
+                providers,
+                container(self.headers.view().map(MainMessage::Headers))
+                    .width(300.),
+                Space::new().width(Length::Fill)
+            )
+        }
+        .into()
     }
 }
 
 /// Message for the main provider panel.
-pub type MainMessage = SelectProviderMsg;
+#[derive(Clone, Debug)]
+pub enum MainMessage {
+    /// Message from the header list.
+    Headers(HeadersMsg),
+    /// Message from the provider selector.
+    SelectProvider(SelectProviderMsg),
+}

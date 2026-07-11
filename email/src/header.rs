@@ -28,7 +28,8 @@ macro_rules! item {
 
 /// IMAP header.
 #[derive(Debug)]
-pub struct Header {
+#[non_exhaustive]
+pub struct EmailHeader {
     /// Blind carbon copy.
     pub bcc: Vec<String>,
     /// Carbon copy.
@@ -55,7 +56,7 @@ pub struct Header {
     pub uid: u32,
 }
 
-impl Header {
+impl EmailHeader {
     /// Parses a header from it's envelope.
     pub fn parse(envelope: &Envelope<'_>, mailbox: Arc<str>, uid: u32) -> Self {
         Self {
@@ -80,8 +81,9 @@ impl Header {
     }
 }
 
-impl Header {
+impl EmailHeader {
     /// Pretty-print for cli usage.
+    #[must_use]
     pub fn debug(&self) -> String {
         let Self {
             bcc,
@@ -119,11 +121,13 @@ impl Header {
     }
 
     /// Returns the list of senders.
+    #[must_use]
     pub fn from(&self) -> String {
         self.from.join(", ")
     }
 
     /// Returns the subject.
+    #[must_use]
     pub const fn subject(&self) -> &str {
         self.subject.as_str()
     }

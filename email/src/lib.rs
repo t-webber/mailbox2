@@ -21,5 +21,6 @@ mod subject_decoder;
 mod test_subject_decoder;
 
 pub use body::EmailBody;
+pub use header::EmailHeader;
 pub use imap::ImageConnectionError;
 pub use provider::EmailProvider;

@@ -8,13 +8,13 @@ extern crate alloc;
 use alloc::sync::Arc;
 use std::sync::Mutex;
 
-use iced::widget::container::Style;
 use iced::widget::container;
+use iced::widget::container::Style;
 use iced::{Element, Length, Task};
 use mailbox_email::EmailProvider;
 
 use crate::pages::add_config::{AddConfigMessage, AddConfigPage};
-use crate::pages::main::{MainMessage, MainPage};
+use crate::pages::main::{MainMessage, MainPage, SelectProviderMsg};
 use crate::ui::component::txt;
 use crate::{GuiApp, Page};
 
@@ -67,7 +67,6 @@ impl Page for GuiApp {
             page.loading(false);
         }
         match data {
-            GuiAppMessage::None => (),
             GuiAppMessage::Error(error) => self.error(error),
             GuiAppMessage::AddConfig(msg) =>
                 if let GuiAppPage::AddConfig(page) = &mut self.page
@@ -87,9 +86,14 @@ impl Page for GuiApp {
                         },
                     );
                 },
-            GuiAppMessage::Main(MainMessage::AddProvider) =>
-                self.page = GuiAppPage::AddConfig(AddConfigPage::default()),
-            GuiAppMessage::Main(MainMessage::SelectProvider(provider)) =>
+            GuiAppMessage::None
+            | GuiAppMessage::Main(MainMessage::Headers(())) => (),
+            GuiAppMessage::Main(MainMessage::SelectProvider(
+                SelectProviderMsg::AddProvider,
+            )) => self.page = GuiAppPage::AddConfig(AddConfigPage::default()),
+            GuiAppMessage::Main(MainMessage::SelectProvider(
+                SelectProviderMsg::SelectProvider(provider),
+            )) =>
                 if let GuiAppPage::Main(main) = &mut self.page {
                     main.update(provider);
                 },

@@ -11,7 +11,7 @@ use tokio_native_tls::{TlsStream, native_tls};
 use tokio_stream::StreamExt as _;
 
 use crate::body::EmailBody;
-use crate::header::Header;
+use crate::header::EmailHeader;
 
 #[allow(
     clippy::allow_attributes,
@@ -102,7 +102,7 @@ pub async fn fetch_body(
 pub async fn fetch_headers(
     session: &mut Session<TlsStream<TcpStream>>,
     mailbox: Arc<str>,
-) -> Result<(Vec<Header>, Vec<ImapError>), FetchHeadersError> {
+) -> Result<(Vec<EmailHeader>, Vec<ImapError>), FetchHeadersError> {
     session.select(&mailbox).await.map_err(FetchHeadersError::MailboxSelect)?;
 
     let mut messages = session
@@ -117,7 +117,7 @@ pub async fn fetch_headers(
         match res_msg {
             Ok(msg) =>
                 if let Some(envelope) = msg.envelope() {
-                    headers.push(Header::parse(
+                    headers.push(EmailHeader::parse(
                         envelope,
                         Arc::clone(&mailbox),
                         msg.uid.unwrap_or_default(),
