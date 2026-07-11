@@ -38,15 +38,16 @@ impl Page for SelectProviderPage {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
+        let current = lock!(self.current).alias();
         column!(
             Column::with_children(lock!(self.list).iter().map(|provider| {
                 let alias = lock!(provider).alias();
                 let msg =
                     SelectProviderMsg::SelectProvider(Arc::clone(provider));
-                btn(txt(alias), msg).into()
+                btn(txt(alias), msg, current == alias, false).into()
             }),),
             Space::new().height(Length::Fill),
-            btn(txt("+"), SelectProviderMsg::AddProvider)
+            btn(txt("+"), SelectProviderMsg::AddProvider, false, false)
         )
         .into()
     }

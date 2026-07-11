@@ -9,12 +9,13 @@ use alloc::sync::Arc;
 use std::sync::Mutex;
 
 use iced::widget::container::Style;
-use iced::widget::{column, container, text};
-use iced::{Color, Element, Length, Task};
+use iced::widget::container;
+use iced::{Element, Length, Task};
 use mailbox_email::EmailProvider;
 
 use crate::pages::add_config::{AddConfigMessage, AddConfigPage};
 use crate::pages::main::{MainMessage, MainPage};
+use crate::ui::component::txt;
 use crate::{GuiApp, Page};
 
 /// Application messages.
@@ -123,8 +124,7 @@ impl Page for GuiApp {
             GuiAppPage::AddConfig(page) =>
                 page.view().map(GuiAppMessage::AddConfig),
             GuiAppPage::Main(main) => main.view().map(GuiAppMessage::Main),
-            GuiAppPage::Authenticate =>
-                column!(text("authenticating...").color(Color::WHITE)).into(),
+            GuiAppPage::Authenticate => txt("authenticating...").into(),
         };
         container(view)
             .center_x(Length::Fill)

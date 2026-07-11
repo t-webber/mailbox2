@@ -6,6 +6,8 @@ extern crate alloc;
 use alloc::sync::Arc;
 use std::sync::Mutex;
 
+use iced::Length;
+use iced::widget::{Space, row};
 use mailbox_email::EmailProvider;
 
 use crate::pages::main::select_provider::{
@@ -49,7 +51,8 @@ impl Page for MainPage {
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
-        self.provider_selector.view()
+        row!(self.provider_selector.view(), Space::new().width(Length::Fill))
+            .into()
     }
 }
 
