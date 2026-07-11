@@ -139,9 +139,7 @@ impl Page for AddConfigPage {
             )
             .align_x(Alignment::Center),
         )
-        .center_x(Length::Fixed(300.))
-        .center_y(Length::Fill)
-        .height(Length::Fill)
+        .width(Length::Fixed(300.))
         .into()
     }
 }

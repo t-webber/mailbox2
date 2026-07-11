@@ -37,8 +37,7 @@ use iced::{Element, Task};
 use mailbox_email::EmailProvider;
 use mailbox_shared::{Config, LoadError};
 
-use crate::pages::GuiAppMessage;
-use crate::pages::add_config::AddConfigPage;
+use crate::pages::{GuiAppMessage, GuiAppPage};
 
 /// Traits and types required for a page to be rendered and updated.
 trait Page {
@@ -65,28 +64,13 @@ pub struct GuiApp {
     providers: Arc<Mutex<Vec<EmailProvider>>>,
 }
 
-/// Gui Application state.
-#[non_exhaustive]
-pub enum GuiAppPage {
-    /// Configuration is empty, open a page to add a provider.
-    AddConfig(AddConfigPage),
-    /// Authenticate the load configurations.
-    Authenticate,
-    /// Configuration is not empty, open default page.
-    Main,
-}
-
 impl GuiApp {
     /// Loads the configuration and returns a default [`GuiAppPage`].
     fn new(config: &mut Config) -> (Self, Task<GuiAppMessage>) {
         let has_configs = config.as_first_email_config().is_some();
         (
             Self {
-                page: if has_configs {
-                    GuiAppPage::Authenticate
-                } else {
-                    GuiAppPage::AddConfig(AddConfigPage::default())
-                },
+                page: GuiAppPage::new(has_configs),
                 providers: Arc::default(),
                 config: Arc::new(Mutex::new(take(config))),
             },
