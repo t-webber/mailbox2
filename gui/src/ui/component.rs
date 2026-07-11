@@ -1,4 +1,5 @@
 use iced::border::{self, rounded};
+use iced::widget::text::IntoFragment;
 use iced::widget::{Button, Text, TextInput, button, text, text_input};
 use iced::{Element, Font, Renderer, Theme};
 
@@ -61,6 +62,8 @@ pub fn btn<
 }
 
 /// Displays a simple piece of text.
-pub fn txt(content: &str) -> Text<'_, Theme, Renderer> {
+pub fn txt<'txt, Content: IntoFragment<'txt>>(
+    content: Content,
+) -> Text<'txt, Theme, Renderer> {
     text(content).font(Font::MONOSPACE).size(TXT_FONT).color(TXT_COLOUR)
 }

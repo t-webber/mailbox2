@@ -3,12 +3,12 @@ use alloc::sync::Arc;
 use std::sync::{Mutex, PoisonError};
 
 use mailbox_email::{EmailProvider, ImageConnectionError};
-use mailbox_shared::{Config, EmailConfig};
+use mailbox_shared::{Config, EmailConfig, lock};
 use tokio::task::JoinSet;
 use tokio::time::error::Elapsed;
 use tokio::time::{Duration, timeout};
 
-use crate::GuiApp;
+use crate::{GuiApp, Providers};
 
 impl GuiApp {
     /// Authenticates with a configuration and gets a new provider.
@@ -18,17 +18,21 @@ impl GuiApp {
     /// Returns a string error giving a vague reason of the failure.
     pub async fn auth(
         email: EmailConfig,
-        providers: Arc<Mutex<Vec<EmailProvider>>>,
+        providers: Providers,
         config: Arc<Mutex<Config>>,
-    ) -> Result<(), &'static str> {
+    ) -> Result<Arc<Mutex<EmailProvider>>, &'static str> {
         let provider = Self::auth_one(&email).await?;
         config
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .add_email_config(email)
             .map_err(|_err| "Failed to save configuration")?;
-        providers.lock().unwrap_or_else(PoisonError::into_inner).push(provider);
-        Ok(())
+        let shared = Arc::new(Mutex::new(provider));
+        providers
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .push(Arc::clone(&shared));
+        Ok(shared)
     }
 
     /// Authenticate every provider of the config.
@@ -39,8 +43,8 @@ impl GuiApp {
     #[expect(clippy::iter_over_hash_type, reason = "useless lint")]
     pub async fn auth_config(
         config: Arc<Mutex<Config>>,
-        providers: Arc<Mutex<Vec<EmailProvider>>>,
-    ) -> Result<(), &'static str> {
+        providers: Providers,
+    ) -> (Option<Arc<Mutex<EmailProvider>>>, Option<&'static str>) {
         let mut set = {
             let mut set = JoinSet::new();
             let cfg = config.lock().unwrap_or_else(PoisonError::into_inner);
@@ -51,18 +55,15 @@ impl GuiApp {
             drop(cfg);
             set
         };
-        let mut res = Ok(());
+        let mut res = None;
         while let Some(next) = set.join_next().await {
             match next {
-                Ok(Ok(ok)) => providers
-                    .lock()
-                    .unwrap_or_else(PoisonError::into_inner)
-                    .push(ok),
-                Ok(Err(err)) => res = Err(err),
-                Err(_) => res = Err("Failed to synchronise state"),
+                Ok(Ok(ok)) => lock!(providers).push(Arc::new(Mutex::new(ok))),
+                Ok(Err(err)) => res = Some(err),
+                Err(_) => res = Some("Failed to synchronise state"),
             }
         }
-        res
+        (lock!(providers).first().map(Arc::clone), res)
     }
 
     /// Authenticate one provider with the given config.

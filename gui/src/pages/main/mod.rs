@@ -1,16 +1,56 @@
-use crate::Page;
-use crate::ui::component::txt;
+/// Left bar to select the active provider.
+mod select_provider;
+
+extern crate alloc;
+
+use alloc::sync::Arc;
+use std::sync::Mutex;
+
+use mailbox_email::EmailProvider;
+
+use crate::pages::main::select_provider::{
+    SelectProviderMsg, SelectProviderPage
+};
+use crate::{Page, Providers};
 
 /// Main page for one provider.
-pub struct MainPage;
+pub struct MainPage {
+    /// Error to display.
+    error: Option<&'static str>,
+    /// Left bar to select the active provider.
+    provider_selector: SelectProviderPage,
+}
 
-impl Page for MainPage {
-    type Message = ();
-    type Update = ();
+impl MainPage {
+    /// Displays an error message.
+    pub const fn error(&mut self, error: &'static str) {
+        self.error = Some(error);
+    }
 
-    fn update(&mut self, (): Self::Message) -> Self::Update {}
-
-    fn view(&self) -> iced::Element<'_, Self::Message> {
-        txt("hi").into()
+    /// Creates a new page.
+    pub const fn new(
+        current: Arc<Mutex<EmailProvider>>,
+        list: Providers,
+    ) -> Self {
+        Self {
+            provider_selector: SelectProviderPage::new(current, list),
+            error: None,
+        }
     }
 }
+
+impl Page for MainPage {
+    type Message = MainMessage;
+    type Update = ();
+
+    fn update(&mut self, message: Self::Message) -> Self::Update {
+        self.provider_selector.update(message);
+    }
+
+    fn view(&self) -> iced::Element<'_, Self::Message> {
+        self.provider_selector.view()
+    }
+}
+
+/// Message for the main provider panel.
+pub type MainMessage = SelectProviderMsg;
