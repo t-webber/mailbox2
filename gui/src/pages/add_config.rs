@@ -54,13 +54,14 @@ impl AddConfigPage {
 
 impl Page for AddConfigPage {
     type Message = AddConfigMessage;
-    type Update = Option<EmailConfig>;
+    type Task = Option<EmailConfig>;
+    type Update = Self::Message;
 
-    fn update(&mut self, message: AddConfigMessage) -> Self::Update {
+    fn update(&mut self, data: AddConfigMessage) -> Self::Task {
         if self.loading {
             return None;
         }
-        match message {
+        match data {
             AddConfigMessage::Alias(ch) => {
                 if self.alias.is_some() && ch.is_some() {
                     self.error = "Alias can't contain more than 1 character";

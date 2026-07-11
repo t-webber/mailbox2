@@ -1,9 +1,11 @@
 extern crate alloc;
 use alloc::sync::Arc;
-use std::sync::{Mutex, PoisonError};
+use std::sync::Mutex;
 
-use iced::widget::Column;
+use iced::Length;
+use iced::widget::{Column, Space, column};
 use mailbox_email::EmailProvider;
+use mailbox_shared::lock;
 
 use crate::ui::component::{btn, txt};
 use crate::{Page, Providers};
@@ -28,29 +30,33 @@ impl SelectProviderPage {
 
 impl Page for SelectProviderPage {
     type Message = SelectProviderMsg;
-    type Update = ();
+    type Task = ();
+    type Update = Arc<Mutex<EmailProvider>>;
 
-    fn update(&mut self, message: Self::Message) -> Self::Update {
-        self.current = message;
+    fn update(&mut self, data: Self::Update) -> Self::Task {
+        self.current = data;
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
-        Column::with_children(
-            self.list
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .iter()
-                .map(|provider| {
-                    let alias = provider
-                        .lock()
-                        .unwrap_or_else(PoisonError::into_inner)
-                        .alias();
-                    btn(txt(alias), Arc::clone(provider)).into()
-                }),
+        column!(
+            Column::with_children(lock!(self.list).iter().map(|provider| {
+                let alias = lock!(provider).alias();
+                let msg =
+                    SelectProviderMsg::SelectProvider(Arc::clone(provider));
+                btn(txt(alias), msg).into()
+            }),),
+            Space::new().height(Length::Fill),
+            btn(txt("+"), SelectProviderMsg::AddProvider)
         )
         .into()
     }
 }
 
-/// Selects a new provider.
-pub type SelectProviderMsg = Arc<Mutex<EmailProvider>>;
+/// Message from the provider selector.
+#[derive(Clone, Debug)]
+pub enum SelectProviderMsg {
+    /// Add a new provider.
+    AddProvider,
+    /// Select a new provider.
+    SelectProvider(Arc<Mutex<EmailProvider>>),
+}

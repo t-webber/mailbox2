@@ -11,7 +11,7 @@ use mailbox_email::EmailProvider;
 use crate::pages::main::select_provider::{
     SelectProviderMsg, SelectProviderPage
 };
-use crate::{Page, Providers};
+use crate::{Page, Provider, Providers};
 
 /// Main page for one provider.
 pub struct MainPage {
@@ -41,10 +41,11 @@ impl MainPage {
 
 impl Page for MainPage {
     type Message = MainMessage;
-    type Update = ();
+    type Task = ();
+    type Update = Provider;
 
-    fn update(&mut self, message: Self::Message) -> Self::Update {
-        self.provider_selector.update(message);
+    fn update(&mut self, data: Self::Update) -> Self::Task {
+        self.provider_selector.update(data);
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
