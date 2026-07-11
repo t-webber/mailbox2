@@ -1,29 +1,26 @@
-extern crate alloc;
-use alloc::sync::Arc;
-use std::sync::Mutex;
-
 use iced::Length;
 use iced::widget::{Column, Space, column};
-use mailbox_email::EmailProvider;
 use mailbox_shared::lock;
 
 use crate::ui::component::{btn, txt};
-use crate::{Page, Providers};
+use crate::{Page, Provider, Providers};
 
 /// Main page for one provider.
 pub struct SelectProviderPage {
     /// Provider currently in use.
-    current: Arc<Mutex<EmailProvider>>,
+    current: Provider,
     /// List of active providers.
     list: Providers,
 }
 
 impl SelectProviderPage {
+    /// Returns the current provider.
+    pub fn current(&self) -> Provider {
+        self.current.clone()
+    }
+
     /// Creates a new page.
-    pub const fn new(
-        current: Arc<Mutex<EmailProvider>>,
-        list: Providers,
-    ) -> Self {
+    pub const fn new(current: Provider, list: Providers) -> Self {
         Self { current, list }
     }
 }
@@ -31,19 +28,18 @@ impl SelectProviderPage {
 impl Page for SelectProviderPage {
     type Message = SelectProviderMsg;
     type Task = ();
-    type Update = Arc<Mutex<EmailProvider>>;
+    type Update = Provider;
 
     fn update(&mut self, data: Self::Update) -> Self::Task {
         self.current = data;
     }
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
-        let current = lock!(self.current).alias();
+        let current = self.current.alias();
         column!(
             Column::with_children(lock!(self.list).iter().map(|provider| {
-                let alias = lock!(provider).alias();
-                let msg =
-                    SelectProviderMsg::SelectProvider(Arc::clone(provider));
+                let alias = provider.alias();
+                let msg = SelectProviderMsg::SelectProvider(provider.clone());
                 btn(txt(alias), msg, current == alias, false).into()
             }),),
             Space::new().height(Length::Fill),
@@ -59,5 +55,5 @@ pub enum SelectProviderMsg {
     /// Add a new provider.
     AddProvider,
     /// Select a new provider.
-    SelectProvider(Arc<Mutex<EmailProvider>>),
+    SelectProvider(Provider),
 }

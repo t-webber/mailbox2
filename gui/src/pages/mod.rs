@@ -6,17 +6,15 @@ mod main;
 extern crate alloc;
 
 use alloc::sync::Arc;
-use std::sync::Mutex;
 
 use iced::widget::container;
 use iced::widget::container::Style;
 use iced::{Element, Length, Task};
-use mailbox_email::EmailProvider;
 
 use crate::pages::add_config::{AddConfigMessage, AddConfigPage};
 use crate::pages::main::{MainMessage, MainPage, SelectProviderMsg};
 use crate::ui::component::txt;
-use crate::{GuiApp, Page};
+use crate::{GuiApp, Page, Provider};
 
 /// Application messages.
 #[derive(Clone, Debug)]
@@ -32,7 +30,7 @@ pub enum GuiAppMessage {
     /// Nothing to be done.
     None,
     /// Message for when a provider is added.
-    ProviderAdded(Arc<Mutex<EmailProvider>>, Option<&'static str>),
+    ProviderAdded(Provider, Option<&'static str>),
 }
 
 /// Gui Application state.
@@ -88,6 +86,14 @@ impl Page for GuiApp {
                 },
             GuiAppMessage::None
             | GuiAppMessage::Main(MainMessage::Headers(())) => (),
+            GuiAppMessage::Main(MainMessage::Loaded(error)) => {
+                if let Some(str) = error {
+                    self.error(str);
+                }
+                if let GuiAppPage::Main(main) = &mut self.page {
+                    main.loading(false);
+                }
+            }
             GuiAppMessage::Main(MainMessage::SelectProvider(
                 SelectProviderMsg::AddProvider,
             )) => self.page = GuiAppPage::AddConfig(AddConfigPage::default()),
@@ -104,6 +110,11 @@ impl Page for GuiApp {
                 ));
                 if let Some(str) = err {
                     self.error(str);
+                }
+                if let GuiAppPage::Main(main) = &mut self.page {
+                    return main.schedule_headers_fetching().map(|error| {
+                        GuiAppMessage::Main(MainMessage::Loaded(error))
+                    });
                 }
             }
             GuiAppMessage::Authenticate => {

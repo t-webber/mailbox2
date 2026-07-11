@@ -1,14 +1,10 @@
-extern crate alloc;
-use alloc::sync::Arc;
-use std::sync::{Mutex, PoisonError};
-
 use mailbox_email::EmailProvider;
-use mailbox_shared::{Config, EmailConfig, lock};
+use mailbox_shared::{ArMx, Config, EmailConfig, lock};
 use tokio::task::JoinSet;
 use tokio::time::error::Elapsed;
 use tokio::time::{Duration, timeout};
 
-use crate::{GuiApp, Providers};
+use crate::{GuiApp, Provider, Providers};
 
 impl GuiApp {
     /// Authenticates with a configuration and gets a new provider.
@@ -19,20 +15,14 @@ impl GuiApp {
     pub async fn auth(
         email: EmailConfig,
         providers: Providers,
-        config: Arc<Mutex<Config>>,
-    ) -> Result<Arc<Mutex<EmailProvider>>, &'static str> {
+        config: ArMx<Config>,
+    ) -> Result<Provider, &'static str> {
         let provider = Self::auth_one(&email).await?;
-        config
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
+        lock!(config)
             .add_email_config(email)
             .map_err(|_err| "Failed to save configuration")?;
-        let shared = Arc::new(Mutex::new(provider));
-        providers
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .push(Arc::clone(&shared));
-        Ok(shared)
+        lock!(providers).push(provider.clone());
+        Ok(provider)
     }
 
     /// Authenticate every provider of the config.
@@ -42,28 +32,26 @@ impl GuiApp {
     /// Returns a string error giving a vague reason of the failure.
     #[expect(clippy::iter_over_hash_type, reason = "useless lint")]
     pub async fn auth_config(
-        config: Arc<Mutex<Config>>,
+        config: ArMx<Config>,
         providers: Providers,
-    ) -> (Option<Arc<Mutex<EmailProvider>>>, Option<&'static str>) {
+    ) -> (Option<Provider>, Option<&'static str>) {
         let mut set = {
             let mut set = JoinSet::new();
-            let cfg = config.lock().unwrap_or_else(PoisonError::into_inner);
-            for email in cfg.as_email_cfgs() {
+            for email in lock!(config).as_email_cfgs() {
                 let this = email.clone();
                 set.spawn(async move { Self::auth_one(&this).await });
             }
-            drop(cfg);
             set
         };
         let mut res = None;
         while let Some(next) = set.join_next().await {
             match next {
-                Ok(Ok(ok)) => lock!(providers).push(Arc::new(Mutex::new(ok))),
+                Ok(Ok(ok)) => lock!(providers).push(ok),
                 Ok(Err(err)) => res = Some(err),
                 Err(_) => res = Some("Failed to synchronise state"),
             }
         }
-        (lock!(providers).first().map(Arc::clone), res)
+        (lock!(providers).first().cloned(), res)
     }
 
     /// Authenticate one provider with the given config.

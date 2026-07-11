@@ -62,7 +62,7 @@ impl EmailProvider {
     ///
     /// Cf. [`FetchBodyError`].
     pub async fn get_body(
-        &mut self,
+        &self,
         uid: u32,
     ) -> Result<EmailBody, FetchBodyError> {
         let mut session = self.session.lock().await;
@@ -88,7 +88,7 @@ impl EmailProvider {
     ///
     /// Cf. [`FetchHeadersError`].
     pub async fn get_headers(
-        &mut self,
+        &self,
     ) -> Result<
         (Vec<ArMx<EmailHeader>>, Vec<FetchHeadersError>),
         FetchHeadersError,

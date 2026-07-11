@@ -31,18 +31,18 @@ mod ui;
 extern crate alloc;
 use alloc::sync::Arc;
 use core::mem::take;
-use std::sync::{Mutex, PoisonError};
+use std::sync::Mutex;
 
 use iced::{Element, Task};
 use mailbox_email::EmailProvider;
-use mailbox_shared::{Config, LoadError};
+use mailbox_shared::{ArMx, Config, LoadError, lock};
 
 use crate::pages::{GuiAppMessage, GuiAppPage};
 
 /// Sharable provider.
-type Provider = Arc<Mutex<EmailProvider>>;
+type Provider = EmailProvider;
 /// Sharable list of providers.
-type Providers = Arc<Mutex<Vec<Provider>>>;
+type Providers = ArMx<Vec<Provider>>;
 
 /// Traits and types required for a page to be rendered and updated.
 trait Page {
@@ -64,7 +64,7 @@ trait Page {
 #[non_exhaustive]
 pub struct GuiApp {
     /// Configuration.
-    config: Arc<Mutex<Config>>,
+    config: ArMx<Config>,
     /// Current page.
     page: GuiAppPage,
     /// List of providers.
@@ -106,11 +106,7 @@ impl GuiApp {
     pub fn run() -> Result<(), GuiError> {
         let config = Mutex::new(Config::load().map_err(GuiError::Load)?);
         iced::application(
-            move || {
-                Self::new(
-                    &mut config.lock().unwrap_or_else(PoisonError::into_inner),
-                )
-            },
+            move || Self::new(&mut lock!(config)),
             Self::update,
             Self::view,
         )

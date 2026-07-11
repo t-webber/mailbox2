@@ -1,3 +1,6 @@
+extern crate alloc;
+use alloc::sync::Arc;
+
 use iced::widget::Column;
 use mailbox_email::EmailHeader;
 use mailbox_shared::{ArMx, lock};
@@ -6,15 +9,22 @@ use crate::Page;
 use crate::ui::component::txt;
 
 /// Shared header.
-type Header = ArMx<EmailHeader>;
+pub type Header = ArMx<EmailHeader>;
 /// Shared list of headers.
-type Headers = ArMx<Vec<Header>>;
+pub type Headers = ArMx<Vec<Header>>;
 
 /// Page to display the list of headers.
 #[derive(Default)]
 pub struct HeadersPage {
     /// List of headers.
     headers: Headers,
+}
+
+impl HeadersPage {
+    /// Returns the list of headers.
+    pub fn list(&self) -> Headers {
+        Arc::clone(&self.headers)
+    }
 }
 
 impl Page for HeadersPage {
