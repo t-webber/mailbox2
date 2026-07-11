@@ -1,5 +1,5 @@
 [workspace]
-members = ["email", "shared", "cli", "bin", "gui"]
+members = ["email", "shared", "bin", "gui"]
 resolver = "3"
 
 [workspace.dependencies]
@@ -24,7 +24,6 @@ tokio-stream = "0.1.18"
 mailparse = "0.16.1"
 mailbox-shared = { path = "shared" }
 mailbox-email = { path = "email" }
-mailbox-cli = { path = "cli" }
 mailbox-gui = { path = "gui" }
 postcard = { version = "1.1.3", default-features = false, features = ["alloc"] }
 serde = { version = "1.0.228", features = ["derive"] }
@@ -71,3 +70,5 @@ else_if_without_else = "allow"
 doc_include_without_cfg = "allow"
 multiple_inherent_impl = "allow"
 pub-use = "allow"
+exhaustive_enums = "allow"
+exhaustive_structs = "allow"
