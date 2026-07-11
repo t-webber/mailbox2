@@ -48,24 +48,24 @@ impl AddConfigPage {
 }
 
 impl Page for AddConfigPage {
-    type Message = Message;
+    type Message = AddConfigMessage;
     type Update = Option<EmailConfig>;
 
-    fn update(&mut self, message: Self::Message) -> Self::Update {
+    fn update(&mut self, message: AddConfigMessage) -> Self::Update {
         if self.loading {
             return None;
         }
         match message {
-            Message::Alias(ch) => {
+            AddConfigMessage::Alias(ch) => {
                 if self.alias.is_some() && ch.is_some() {
                     self.error = "Alias can't contain more than 1 character";
                 }
                 self.alias = ch;
             }
-            Message::Domain(str) => self.domain = str,
-            Message::User(usr) => self.user = usr,
-            Message::Password(psk) => self.password = psk,
-            Message::Port(port) =>
+            AddConfigMessage::Domain(str) => self.domain = str,
+            AddConfigMessage::User(usr) => self.user = usr,
+            AddConfigMessage::Password(psk) => self.password = psk,
+            AddConfigMessage::Port(port) =>
                 if port.is_empty() {
                     self.port = 0;
                 } else if let Ok(nb) = port.parse() {
@@ -74,7 +74,7 @@ impl Page for AddConfigPage {
                     self.error =
                         "Port must be a valid unsigned 16-bits integer";
                 },
-            Message::Submit =>
+            AddConfigMessage::Submit =>
                 if self.alias.is_none() {
                     self.error = "Missing alias";
                 } else if self.user.is_empty() {
@@ -88,26 +88,27 @@ impl Page for AddConfigPage {
                 } else {
                     return Some(self.to_cfg());
                 },
-            Message::Error(error) => self.error = error,
+            AddConfigMessage::Error(error) => self.error = error,
         }
         None
     }
 
-    fn view(&self) -> Element<'_, Message> {
-        let elements: [Element<'_, Message>; 8] = [
+    fn view(&self) -> Element<'_, AddConfigMessage> {
+        let elements: [Element<'_, AddConfigMessage>; 8] = [
             txt("New email provider").size(TXT_FONT + 2).into(),
             input(
                 "Alias for displaying it in this app",
                 &self.alias.map(|ch| ch.to_string()).unwrap_or_default(),
-                |x: String| Message::Alias(x.chars().last()),
+                |x: String| AddConfigMessage::Alias(x.chars().last()),
             )
             .into(),
-            input("User (email)", &self.user, Message::User).into(),
-            input("Password", &self.password, Message::Password).into(),
+            input("User (email)", &self.user, AddConfigMessage::User).into(),
+            input("Password", &self.password, AddConfigMessage::Password)
+                .into(),
             input(
                 "Domain (e.g. imap.gmail.com)",
                 &self.domain,
-                Message::Domain,
+                AddConfigMessage::Domain,
             )
             .into(),
             input(
@@ -117,10 +118,10 @@ impl Page for AddConfigPage {
                 } else {
                     self.port.to_string()
                 },
-                Message::Port,
+                AddConfigMessage::Port,
             )
             .into(),
-            btn(txt("Submit"), Message::Submit).into(),
+            btn(txt("Submit"), AddConfigMessage::Submit).into(),
             if self.loading {
                 txt("Establishing connection...").color(YELLOW)
             } else if self.error.is_empty() {
@@ -155,7 +156,7 @@ impl Page for AddConfigPage {
     reason = "dup doc"
 )]
 #[derive(Clone, Debug)]
-pub enum Message {
+pub enum AddConfigMessage {
     Alias(Option<char>),
     Domain(Arc<str>),
     Error(&'static str),

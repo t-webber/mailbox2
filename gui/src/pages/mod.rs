@@ -9,12 +9,12 @@ use iced::widget::container::Style;
 use iced::widget::{button, column, container, text};
 use iced::{Color, Element, Length, Task};
 
-use crate::pages::add_config::AddConfigPage;
+use crate::pages::add_config::{AddConfigMessage, AddConfigPage};
 use crate::{GuiApp, GuiAppPage, Page};
 
 /// Application messages.
 #[derive(Clone, Debug)]
-pub enum Message {
+pub enum GuiAppMessage {
     /// Messages for the add config page.
     AddPage(<AddConfigPage as Page>::Message),
     /// Authenticates the providers loaded from the configuration.
@@ -24,7 +24,7 @@ pub enum Message {
 }
 
 impl Page for GuiApp {
-    type Message = Message;
+    type Message = GuiAppMessage;
     type Update = Task<Self::Message>;
 
     fn update(&mut self, message: Self::Message) -> Self::Update {
@@ -32,7 +32,7 @@ impl Page for GuiApp {
             page.loading(false);
         }
         match message {
-            Message::AddPage(msg) =>
+            GuiAppMessage::AddPage(msg) =>
                 if let GuiAppPage::AddConfig(page) = &mut self.page
                     && let Some(email) = page.update(msg)
                 {
@@ -42,24 +42,23 @@ impl Page for GuiApp {
                     return Task::perform(
                         Self::auth(email, providers, config),
                         |res| match res {
-                            Ok(()) => Message::ProviderAdded,
-                            Err(str) => Message::AddPage(
-                                <AddConfigPage as Page>::Message::Error(str),
+                            Ok(()) => GuiAppMessage::ProviderAdded,
+                            Err(str) => GuiAppMessage::AddPage(
+                                AddConfigMessage::Error(str),
                             ),
                         },
                     );
                 },
-            Message::ProviderAdded => self.page = GuiAppPage::Main,
-            Message::Authenticate => {
+            GuiAppMessage::ProviderAdded => self.page = GuiAppPage::Main,
+            GuiAppMessage::Authenticate => {
                 let config = Arc::clone(&self.config);
                 let providers = Arc::clone(&self.providers);
                 return Task::perform(
                     Self::auth_config(config, providers),
                     |res| match res {
-                        Ok(()) => Message::ProviderAdded,
-                        Err(str) => Message::AddPage(
-                            <AddConfigPage as Page>::Message::Error(str),
-                        ),
+                        Ok(()) => GuiAppMessage::ProviderAdded,
+                        Err(str) =>
+                            GuiAppMessage::AddPage(AddConfigMessage::Error(str)),
                     },
                 );
             }
@@ -67,9 +66,10 @@ impl Page for GuiApp {
         Task::none()
     }
 
-    fn view(&self) -> Element<'_, Self::Message> {
+    fn view(&self) -> Element<'_, GuiAppMessage> {
         let view = match &self.page {
-            GuiAppPage::AddConfig(page) => page.view().map(Message::AddPage),
+            GuiAppPage::AddConfig(page) =>
+                page.view().map(GuiAppMessage::AddPage),
             GuiAppPage::Main =>
                 column!(text("hi").color(Color::WHITE), button("click")).into(),
             GuiAppPage::Authenticate =>

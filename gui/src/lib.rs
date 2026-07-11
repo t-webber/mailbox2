@@ -37,7 +37,7 @@ use iced::{Element, Task};
 use mailbox_email::EmailProvider;
 use mailbox_shared::{Config, LoadError};
 
-use crate::pages::Message;
+use crate::pages::GuiAppMessage;
 use crate::pages::add_config::AddConfigPage;
 
 /// Traits and types required for a page to be rendered and updated.
@@ -78,7 +78,7 @@ pub enum GuiAppPage {
 
 impl GuiApp {
     /// Loads the configuration and returns a default [`GuiAppPage`].
-    fn new(config: &mut Config) -> (Self, Task<Message>) {
+    fn new(config: &mut Config) -> (Self, Task<GuiAppMessage>) {
         let has_configs = config.as_first_email_config().is_some();
         (
             Self {
@@ -91,7 +91,7 @@ impl GuiApp {
                 config: Arc::new(Mutex::new(take(config))),
             },
             if has_configs {
-                Task::done(Message::Authenticate)
+                Task::done(GuiAppMessage::Authenticate)
             } else {
                 Task::none()
             },
