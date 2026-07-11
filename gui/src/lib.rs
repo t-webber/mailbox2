@@ -25,6 +25,8 @@
 mod auth;
 /// List of pages to display on the screen.
 mod pages;
+/// Helpers for styling and UI.
+mod ui;
 
 extern crate alloc;
 use alloc::sync::Arc;
