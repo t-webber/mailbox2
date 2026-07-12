@@ -131,6 +131,7 @@ impl Page for MainPage {
             row!(
                 providers,
                 self.headers.view().map(MainMessage::Headers),
+                txt(" "),
                 container(self.body.view().map(MainMessage::Body))
                     .width(Length::Fill),
             )

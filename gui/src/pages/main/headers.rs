@@ -1,6 +1,5 @@
 extern crate alloc;
 use alloc::sync::Arc;
-use core::iter::repeat_n;
 
 use iced::Length;
 use iced::widget::text::Wrapping;
@@ -46,8 +45,8 @@ impl Page for HeadersPage {
     fn update(&mut self, (): Self::Update) -> Self::Task {}
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
-        scroll(Column::with_children(lock!(self.headers).iter().map(
-            |header| {
+        scroll(
+            Column::with_children(lock!(self.headers).iter().map(|header| {
                 let lock = lock!(header);
                 debug_assert_eq!(lock.date().len(), 14, "invalid format");
                 btn(
@@ -71,8 +70,9 @@ impl Page for HeadersPage {
                     grey(60),
                 )
                 .into()
-            },
-        )))
+            })),
+            grey(30),
+        )
         .into()
     }
 }

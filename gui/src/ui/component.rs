@@ -1,13 +1,13 @@
 use iced::border::{self, rounded};
-use iced::widget::scrollable::{Rail, Scroller};
+use iced::widget::scrollable::{Direction, Rail, Scrollbar, Scroller};
 use iced::widget::text::IntoFragment;
 use iced::widget::{
-    Button, Container, Text, TextInput, button, container, scrollable, text, text_input
+    Button, Scrollable, Text, TextInput, button, container, scrollable, text, text_input
 };
 use iced::{Color, Element, Font, Renderer, Theme};
 
 use crate::ui::style::{
-    BORDER_WIDTH, BTN_COLOUR, FOCUSED_COLOUR, RADIUS, TXT_COLOUR, TXT_FONT, grey
+    BORDER_WIDTH, FOCUSED_COLOUR, RADIUS, TXT_COLOUR, TXT_FONT, grey
 };
 
 /// Text input.
@@ -82,18 +82,22 @@ pub fn scroll<
     Msg: 'disp,
 >(
     content: Content,
-) -> Container<'disp, Msg> {
-    container(scrollable(content).style(|theme, status| scrollable::Style {
-        container: container::Style::default(),
-        vertical_rail: Rail {
-            background: Some(BTN_COLOUR.into()),
-            border: border::rounded(0.).width(4.).color(Color::TRANSPARENT),
-            scroller: Scroller {
-                background: Color::TRANSPARENT.into(),
-                border: border::rounded(10.).width(10.).color(FOCUSED_COLOUR),
+    _bg: Color,
+) -> Scrollable<'disp, Msg> {
+    scrollable(content)
+        .direction(Direction::Vertical(
+            Scrollbar::new().width(2.).scroller_width(8.),
+        ))
+        .style(move |theme, status| scrollable::Style {
+            container: container::Style::default(),
+            vertical_rail: Rail {
+                background: Some(FOCUSED_COLOUR.into()),
+                border: border::rounded(0.),
+                scroller: Scroller {
+                    background: FOCUSED_COLOUR.into(),
+                    border: border::rounded(99.),
+                },
             },
-        },
-        ..scrollable::default(theme, status)
-    }))
-    .padding(2.)
+            ..scrollable::default(theme, status)
+        })
 }

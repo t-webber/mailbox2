@@ -3,13 +3,13 @@ use alloc::sync::Arc;
 
 use iced::widget::text::{Rich, Span};
 use iced::widget::{container, rich_text, span};
-use iced::{Element, Font, Length};
+use iced::{Color, Element, Font, Length};
 use linkify::{LinkFinder, LinkKind};
 use mailbox_email::EmailBody;
 use mailbox_shared::{ArMx, lock};
 
 use crate::Page;
-use crate::ui::component::txt;
+use crate::ui::component::{scroll, txt};
 use crate::ui::style::{LINK_COLOUR, TXT_COLOUR, TXT_FONT, YELLOW};
 
 /// Page to display the list of headers.
@@ -87,7 +87,8 @@ impl Page for BodyPage {
         container(match self {
             Self::None => txt("Select an email to display it"),
             Self::Some(maybe_body) => match lock!(maybe_body).as_ref() {
-                Some(body) => return Self::view_body(body).into(),
+                Some(body) =>
+                    return scroll(Self::view_body(body), Color::BLACK).into(),
                 None => txt("Loading").color(YELLOW),
             },
         })
