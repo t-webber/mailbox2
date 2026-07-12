@@ -121,9 +121,14 @@ impl Page for GuiApp {
                     self.error(str);
                 }
                 if let GuiAppPage::Main(main) = &mut self.page {
-                    return main.schedule_headers_fetching().map(|error| {
-                        GuiAppMessage::Main(MainMessage::Loaded(error))
-                    });
+                    return Task::batch([
+                        main.schedule_headers_fetching().map(|error| {
+                            GuiAppMessage::Main(MainMessage::Loaded(error))
+                        }),
+                        main.schedule_unseen_fetching().map(|error| {
+                            GuiAppMessage::Main(MainMessage::Loaded(error))
+                        }),
+                    ]);
                 }
             }
             GuiAppMessage::Authenticate => {

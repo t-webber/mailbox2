@@ -1,10 +1,13 @@
-use iced::Color;
+use iced::{Color, Font};
+
+/// Default monospace font.
+pub const FONT: Font = Font::MONOSPACE;
 
 /// Default text font size.
 pub const TXT_FONT: u32 = 8;
 
 /// Default color of text.
-pub const TXT_COLOUR: Color = Color::from_rgb8(255, 255, 245);
+pub const TXT_COLOUR: Color = Color::from_rgb8(255, 255, 220);
 
 /// Colour of unfocused button.
 pub const BTN_COLOUR: Color = Color::from_rgb8(50, 50, 100);
@@ -20,6 +23,9 @@ pub const FOCUSED_COLOUR: Color = Color::from_rgb8(75, 75, 150);
 
 /// Link colour.
 pub const LINK_COLOUR: Color = Color::from_rgb8(100, 100, 200);
+
+/// Unseen colour.
+pub const UNSEEN_COLOUR: Color = Color::from_rgb8(200, 200, 255);
 
 /// Radius of borders.
 pub const RADIUS: f32 = 4.;

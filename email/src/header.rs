@@ -2,6 +2,7 @@ extern crate alloc;
 
 use alloc::borrow::Cow;
 use alloc::sync::Arc;
+use core::cmp::Ordering;
 
 use async_imap::imap_proto::{Address, Envelope};
 use chrono::{DateTime, Datelike as _, FixedOffset, Timelike as _};
@@ -28,7 +29,7 @@ macro_rules! item {
 }
 
 /// IMAP header.
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 #[non_exhaustive]
 pub struct EmailHeader {
     /// Blind carbon copy.
@@ -55,6 +56,22 @@ pub struct EmailHeader {
     pub to: Vec<String>,
     /// Unique email id.
     pub uid: u32,
+}
+
+impl Ord for EmailHeader {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self.date, other.date) {
+            (None, _) => Ordering::Greater,
+            (_, None) => Ordering::Less,
+            (Some(this), Some(that)) => this.cmp(&that),
+        }
+    }
+}
+
+impl PartialOrd for EmailHeader {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl EmailHeader {

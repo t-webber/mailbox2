@@ -1,5 +1,7 @@
 extern crate alloc;
+use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
+use std::collections::HashSet;
 use std::io;
 
 use async_imap::error::Error as ImapError;
@@ -103,26 +105,46 @@ impl EmailProvider {
             .fetch("1:*", "(UID ENVELOPE)")
             .await
             .map_err(FetchHeadersError::Request)?;
-        let mut headers = vec![];
+        let mut headers = BTreeSet::new();
         let mut errors = vec![];
         while let Some(res_msg) = messages.next().await {
             match res_msg {
                 Ok(msg) =>
                     if let Some(envelope) = msg.envelope() {
-                        headers.push(Arc::new(StdMutex::new(
-                            EmailHeader::parse(
-                                envelope,
-                                Arc::clone(&mailbox),
-                                msg.uid.unwrap_or_default(),
-                            ),
-                        )));
+                        headers.insert(EmailHeader::parse(
+                            envelope,
+                            Arc::clone(&mailbox),
+                            msg.uid.unwrap_or_default(),
+                        ));
                     },
                 Err(err) => errors.push(FetchHeadersError::Request(err)),
             }
         }
         drop(messages);
         drop(session);
-        Ok((headers, errors))
+        Ok((
+            headers
+                .into_iter()
+                .rev()
+                .map(|header| Arc::new(StdMutex::new(header)))
+                .collect(),
+            errors,
+        ))
+    }
+
+    /// List unseen emails.
+    ///
+    /// # Errors
+    ///
+    /// Cf. [`UnseenError`].
+    pub async fn get_unseen(&self) -> Result<HashSet<u32>, UnseenError> {
+        let mut session = self.session.lock().await;
+        let mailbox = Arc::from("INBOX");
+        session.select(&mailbox).await.map_err(UnseenError::MailboxSelect)?;
+        let uids =
+            session.uid_search("UNSEEN").await.map_err(UnseenError::Request)?;
+        drop(session);
+        Ok(uids)
     }
 }
 
@@ -142,6 +164,11 @@ error!(FetchBodyError:
 );
 
 error!(FetchHeadersError:
+    MailboxSelect ImapError: "Failed to select mailbox",
+    Request ImapError: "Connection error",
+);
+
+error!(UnseenError:
     MailboxSelect ImapError: "Failed to select mailbox",
     Request ImapError: "Connection error",
 );

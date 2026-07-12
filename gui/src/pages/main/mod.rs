@@ -5,6 +5,8 @@ mod headers;
 /// Left bar to select the active provider.
 mod select_provider;
 
+use std::collections::HashSet;
+
 use iced::widget::{container, row};
 use iced::{Alignment, Length, Task};
 use mailbox_email::{EmailBody, FetchHeadersError};
@@ -72,6 +74,20 @@ impl MainPage {
         }
     }
 
+    /// Fetch the list of unseen emails.
+    async fn fetch_unseen(
+        unseen: ArMx<HashSet<u32>>,
+        provider: Provider,
+    ) -> Option<&'static str> {
+        match provider.get_unseen().await {
+            Ok(new) => {
+                *lock!(unseen) = new;
+                None
+            }
+            Err(err) => Some(err.display()),
+        }
+    }
+
     /// Sets the loading status.
     pub const fn loading(&mut self, loading: bool) {
         self.loading = loading;
@@ -101,6 +117,13 @@ impl MainPage {
         let headers = self.headers.list();
         let provider = self.provider_selector.current();
         Task::perform(Self::fetch_headers(headers, provider), |res| res)
+    }
+
+    /// Populate the headers and return a task.
+    pub fn schedule_unseen_fetching(&self) -> Task<Option<&'static str>> {
+        let unseen = self.headers.unseen();
+        let provider = self.provider_selector.current();
+        Task::perform(Self::fetch_unseen(unseen, provider), |res| res)
     }
 }
 

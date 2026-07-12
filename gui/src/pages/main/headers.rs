@@ -1,5 +1,6 @@
 extern crate alloc;
 use alloc::sync::Arc;
+use std::collections::HashSet;
 
 use iced::Length;
 use iced::widget::text::Wrapping;
@@ -9,7 +10,7 @@ use mailbox_shared::{ArMx, lock};
 
 use crate::Page;
 use crate::ui::component::{btn, scroll, txt};
-use crate::ui::style::grey;
+use crate::ui::style::{TXT_COLOUR, UNSEEN_COLOUR, grey};
 
 /// Shared header.
 pub type Header = ArMx<EmailHeader>;
@@ -23,6 +24,8 @@ pub struct HeadersPage {
     current: Option<u32>,
     /// List of headers.
     headers: Headers,
+    /// List of unseen emails.
+    unseen: ArMx<HashSet<u32>>,
 }
 
 impl HeadersPage {
@@ -35,6 +38,11 @@ impl HeadersPage {
     pub const fn set_current(&mut self, uid: u32) {
         self.current = Some(uid);
     }
+
+    /// Returns the set of unseen emails.
+    pub fn unseen(&self) -> ArMx<HashSet<u32>> {
+        Arc::clone(&self.unseen)
+    }
 }
 
 impl Page for HeadersPage {
@@ -45,19 +53,30 @@ impl Page for HeadersPage {
     fn update(&mut self, (): Self::Update) -> Self::Task {}
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
+        let unseen = lock!(self.unseen);
         scroll(
             Column::with_children(lock!(self.headers).iter().map(|header| {
                 let lock = lock!(header);
                 debug_assert_eq!(lock.date().len(), 14, "invalid format");
+                let colour = if unseen.contains(&lock.uid) {
+                    UNSEEN_COLOUR
+                } else {
+                    TXT_COLOUR
+                };
                 btn(
                     column!(
-                        container(txt(lock.from()).wrapping(Wrapping::None))
-                            .clip(true)
-                            .height(Length::Shrink)
-                            .width(Length::Fixed(200.)),
+                        container(
+                            txt(lock.from())
+                                .wrapping(Wrapping::None)
+                                .color(colour)
+                        )
+                        .clip(true)
+                        .height(Length::Shrink)
+                        .width(Length::Fixed(200.)),
                         container(
                             txt(lock.subject().to_owned())
                                 .wrapping(Wrapping::None)
+                                .color(colour)
                         )
                         .width(Length::Fixed(200.))
                         .clip(true)

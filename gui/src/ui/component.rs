@@ -7,7 +7,7 @@ use iced::widget::{
 use iced::{Color, Element, Font, Renderer, Theme};
 
 use crate::ui::style::{
-    BORDER_WIDTH, FOCUSED_COLOUR, RADIUS, TXT_COLOUR, TXT_FONT, grey
+    BORDER_WIDTH, FOCUSED_COLOUR, FONT, RADIUS, TXT_COLOUR, TXT_FONT, grey
 };
 
 /// Text input.
@@ -72,7 +72,7 @@ pub fn btn<
 pub fn txt<'txt, Content: IntoFragment<'txt>>(
     content: Content,
 ) -> Text<'txt, Theme, Renderer> {
-    text(content).font(Font::MONOSPACE).size(TXT_FONT).color(TXT_COLOUR)
+    text(content).font(FONT).size(TXT_FONT).color(TXT_COLOUR)
 }
 
 /// Wraps an element in a scrollable zone.
@@ -86,12 +86,12 @@ pub fn scroll<
 ) -> Scrollable<'disp, Msg> {
     scrollable(content)
         .direction(Direction::Vertical(
-            Scrollbar::new().width(2.).scroller_width(8.),
+            Scrollbar::new().width(0.).scroller_width(9.),
         ))
         .style(move |theme, status| scrollable::Style {
             container: container::Style::default(),
             vertical_rail: Rail {
-                background: Some(FOCUSED_COLOUR.into()),
+                background: None,
                 border: border::rounded(0.),
                 scroller: Scroller {
                     background: FOCUSED_COLOUR.into(),

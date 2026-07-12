@@ -55,6 +55,9 @@ impl BodyPage {
                         .split('/')
                         .next()
                         .unwrap_or_default()
+                        .split('?')
+                        .next()
+                        .unwrap_or_default()
                         .to_owned(),
                 )
                 .color(LINK_COLOUR)
