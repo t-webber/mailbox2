@@ -19,5 +19,5 @@ mod test_subject_decoder;
 pub use body::EmailBody;
 pub use header::EmailHeader;
 pub use provider::{
-    EmailProvider, FetchBodyError, FetchHeadersError, ImapConnectionError
+    EmailProvider, FetchBodyError, FetchHeadersError, ImapConnectionError, ListBoxError, SelectBoxError
 };

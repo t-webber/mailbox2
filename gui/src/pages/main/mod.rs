@@ -2,20 +2,25 @@
 mod body;
 /// Lists the headers of the current mailbox.
 mod headers;
+/// Dropdown to select a folder.
+mod select_box;
 /// Left bar to select the active provider.
 mod select_provider;
 
+extern crate alloc;
+use alloc::sync::Arc;
 use std::collections::HashSet;
 
-use iced::widget::{container, row};
+use iced::widget::{column, container, row};
 use iced::{Alignment, Length, Task};
-use mailbox_email::{EmailBody, FetchHeadersError};
+use mailbox_email::{EmailBody, FetchHeadersError, ListBoxError};
 use mailbox_shared::{ArMx, lock};
 
 pub use crate::pages::main::body::BodyMsg;
 use crate::pages::main::body::BodyPage;
 pub use crate::pages::main::headers::HeadersMsg;
 use crate::pages::main::headers::{Headers, HeadersPage};
+use crate::pages::main::select_box::{Mailboxes, SelectBoxPage};
 pub use crate::pages::main::select_provider::SelectProviderMsg;
 use crate::pages::main::select_provider::SelectProviderPage;
 use crate::ui::component::txt;
@@ -31,11 +36,26 @@ pub struct MainPage {
     headers: HeadersPage,
     /// Whether the app is ready to show data or not.
     loading: bool,
+    /// Dropdown to select the active mailbox.
+    mailbox_selector: SelectBoxPage,
     /// Left bar to select the active provider.
     provider_selector: SelectProviderPage,
 }
 
 impl MainPage {
+    /// Populates the main page data with asynchronous workers.
+    pub fn boot(&mut self) -> Task<MainMessage> {
+        let provider = self.provider_selector.current();
+        let boxes = self.mailbox_selector.list();
+        Task::batch([
+            self.select_box_and_fetch_headers("INBOX".into()),
+            Task::perform(
+                Self::fetch_boxes(boxes, provider),
+                MainMessage::Error,
+            ),
+        ])
+    }
+
     /// Displays an error message.
     pub const fn error(&mut self, error: &'static str) {
         self.error = Some(error);
@@ -53,6 +73,22 @@ impl MainPage {
             Ok(new_body) => {
                 *lock!(body) = Some(new_body);
                 None
+            }
+            Err(error) => Some(error.display()),
+        }
+    }
+
+    /// Fetch the list of mailboxes.
+    ///
+    /// Returns the first error if any.
+    async fn fetch_boxes(
+        boxes: Mailboxes,
+        provider: Provider,
+    ) -> Option<&'static str> {
+        match provider.get_mailboxes().await {
+            Ok((list, errors)) => {
+                *lock!(boxes) = list;
+                errors.first().map(ListBoxError::display)
             }
             Err(error) => Some(error.display()),
         }
@@ -97,6 +133,7 @@ impl MainPage {
     pub fn new(current: Provider, list: Providers) -> Self {
         Self {
             body: BodyPage::default(),
+            mailbox_selector: SelectBoxPage::new("INBOX".into()),
             provider_selector: SelectProviderPage::new(current, list),
             headers: HeadersPage::default(),
             error: None,
@@ -112,18 +149,52 @@ impl MainPage {
         Task::perform(Self::fetch_body(uid, body, provider), |res| res)
     }
 
-    /// Populate the headers and return a task.
-    pub fn schedule_headers_fetching(&self) -> Task<Option<&'static str>> {
-        let headers = self.headers.list();
-        let provider = self.provider_selector.current();
-        Task::perform(Self::fetch_headers(headers, provider), |res| res)
+    /// Selects a new mailbox.
+    ///
+    /// This also fetches the list of headers and unseen messages once the
+    /// mailbox is selected.
+    async fn select_box(
+        provider: Provider,
+        name: Arc<str>,
+    ) -> Option<&'static str> {
+        provider
+            .select_mailbox(&name)
+            .await
+            .map_or_else(|err| Some(err.display()), |()| None)
     }
 
-    /// Populate the headers and return a task.
-    pub fn schedule_unseen_fetching(&self) -> Task<Option<&'static str>> {
+    /// Selects a new mailbox.
+    ///
+    /// This also fetches the list of headers and unseen messages once the
+    /// mailbox is selected.
+    pub fn select_box_and_fetch_headers(
+        &mut self,
+        name: Arc<str>,
+    ) -> Task<MainMessage> {
+        self.mailbox_selector.update(Arc::clone(&name));
+        let headers = self.headers.list();
         let unseen = self.headers.unseen();
         let provider = self.provider_selector.current();
-        Task::perform(Self::fetch_unseen(unseen, provider), |res| res)
+        let provider1 = provider.clone();
+        Task::perform(Self::select_box(provider1, name), MainMessage::Error)
+            .then(move |_| {
+                Task::batch([
+                    Task::perform(
+                        Self::fetch_headers(
+                            Arc::clone(&headers),
+                            provider.clone(),
+                        ),
+                        MainMessage::Loaded,
+                    ),
+                    Task::perform(
+                        Self::fetch_unseen(
+                            Arc::clone(&unseen),
+                            provider.clone(),
+                        ),
+                        MainMessage::Error,
+                    ),
+                ])
+            })
     }
 }
 
@@ -153,7 +224,14 @@ impl Page for MainPage {
         } else {
             row!(
                 providers,
-                self.headers.view().map(MainMessage::Headers),
+                column!(
+                    container(
+                        self.mailbox_selector
+                            .view()
+                            .map(MainMessage::SelectMailbox)
+                    ),
+                    self.headers.view().map(MainMessage::Headers)
+                ),
                 txt(" "),
                 container(self.body.view().map(MainMessage::Body))
                     .width(Length::Fill),
@@ -168,10 +246,14 @@ impl Page for MainPage {
 pub enum MainMessage {
     /// Message from the email body pane.
     Body(BodyMsg),
+    /// Maybe an error occurred.
+    Error(Option<&'static str>),
     /// Message from the header list.
     Headers(HeadersMsg),
     /// The headers finished loading.
     Loaded(Option<&'static str>),
+    /// Select a mailbox.
+    SelectMailbox(Arc<str>),
     /// Message from the provider selector.
     SelectProvider(SelectProviderMsg),
 }

@@ -10,7 +10,7 @@ use mailbox_shared::{ArMx, lock};
 
 use crate::Page;
 use crate::ui::component::{btn, scroll, txt};
-use crate::ui::style::{TXT_COLOUR, UNSEEN_COLOUR, grey};
+use crate::ui::style::{TXT_COLOUR, UNSEEN_COLOUR, YELLOW, grey};
 
 /// Shared header.
 pub type Header = ArMx<EmailHeader>;
@@ -54,8 +54,15 @@ impl Page for HeadersPage {
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let unseen = lock!(self.unseen);
+        let headers = lock!(self.headers);
+        if headers.is_empty() {
+            return container(txt("Loading headers...").color(YELLOW))
+                .center(Length::Fill)
+                .width(Length::Fixed(200.))
+                .into();
+        }
         scroll(
-            Column::with_children(lock!(self.headers).iter().map(|header| {
+            Column::with_children(headers.iter().map(|header| {
                 let lock = lock!(header);
                 debug_assert_eq!(lock.date().len(), 14, "invalid format");
                 let colour = if unseen.contains(&lock.uid) {

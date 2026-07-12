@@ -25,7 +25,7 @@ pub const FOCUSED_COLOUR: Color = Color::from_rgb8(75, 75, 150);
 pub const LINK_COLOUR: Color = Color::from_rgb8(100, 100, 200);
 
 /// Unseen colour.
-pub const UNSEEN_COLOUR: Color = Color::from_rgb8(200, 200, 255);
+pub const UNSEEN_COLOUR: Color = Color::from_rgb8(250, 200, 150);
 
 /// Radius of borders.
 pub const RADIUS: f32 = 4.;

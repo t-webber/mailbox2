@@ -65,7 +65,14 @@ impl Page for GuiApp {
             page.loading(false);
         }
         match data {
-            GuiAppMessage::Error(error) => self.error(error),
+            GuiAppMessage::Main(MainMessage::SelectMailbox(mailbox)) =>
+                if let GuiAppPage::Main(main) = &mut self.page {
+                    return main
+                        .select_box_and_fetch_headers(mailbox)
+                        .map(GuiAppMessage::Main);
+                },
+            GuiAppMessage::Main(MainMessage::Error(Some(error)))
+            | GuiAppMessage::Error(error) => self.error(error),
             GuiAppMessage::AddConfig(msg) =>
                 if let GuiAppPage::AddConfig(page) = &mut self.page
                     && let Some(email) = page.update(msg)
@@ -84,7 +91,9 @@ impl Page for GuiApp {
                         },
                     );
                 },
-            GuiAppMessage::Main(MainMessage::Body(()))
+            GuiAppMessage::Main(
+                MainMessage::Error(None) | MainMessage::Body(()),
+            )
             | GuiAppMessage::None => (),
             GuiAppMessage::Main(MainMessage::Headers(header)) =>
                 if let GuiAppPage::Main(main) = &mut self.page {
@@ -121,14 +130,7 @@ impl Page for GuiApp {
                     self.error(str);
                 }
                 if let GuiAppPage::Main(main) = &mut self.page {
-                    return Task::batch([
-                        main.schedule_headers_fetching().map(|error| {
-                            GuiAppMessage::Main(MainMessage::Loaded(error))
-                        }),
-                        main.schedule_unseen_fetching().map(|error| {
-                            GuiAppMessage::Main(MainMessage::Loaded(error))
-                        }),
-                    ]);
+                    return main.boot().map(GuiAppMessage::Main);
                 }
             }
             GuiAppMessage::Authenticate => {

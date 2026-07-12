@@ -1,7 +1,6 @@
 extern crate alloc;
 
 use alloc::borrow::Cow;
-use alloc::sync::Arc;
 use core::cmp::Ordering;
 
 use async_imap::imap_proto::{Address, Envelope};
@@ -13,18 +12,6 @@ use crate::subject_decoder::decode_subject;
 macro_rules! field {
     ($field:expr) => {
         $field.as_deref().map(String::from_utf8_lossy)
-    };
-}
-
-/// Helper to display a lines for the debug method.
-macro_rules! item {
-    ($lines:ident $val:expr) => {
-        if !$val.is_empty() {
-            $lines.push(format!(
-                concat!(stringify!($val), ": {}"),
-                $val.join(", ")
-            ))
-        }
     };
 }
 
@@ -42,8 +29,6 @@ pub struct EmailHeader {
     pub from: Vec<String>,
     /// Thread conversation email.
     pub in_reply_to: Option<String>,
-    /// Name of the mailbox corresponding to the unique id.
-    pub mailbox: Arc<str>,
     /// Immutable message id.
     pub message_id: String,
     /// To whom to reply.
@@ -76,9 +61,8 @@ impl PartialOrd for EmailHeader {
 
 impl EmailHeader {
     /// Parses a header from it's envelope.
-    pub fn parse(envelope: &Envelope<'_>, mailbox: Arc<str>, uid: u32) -> Self {
+    pub fn parse(envelope: &Envelope<'_>, uid: u32) -> Self {
         Self {
-            mailbox,
             from: serialises_addresses(envelope.from.as_ref()),
             subject: field!(envelope.subject).map_or_else(
                 || "<no subject>".to_owned(),
@@ -122,44 +106,6 @@ impl EmailHeader {
                 )
             })
             .unwrap_or_default()
-    }
-
-    /// Pretty-print for cli usage.
-    #[must_use]
-    pub fn debug(&self) -> String {
-        let Self {
-            bcc,
-            cc,
-            mailbox,
-            date,
-            from,
-            in_reply_to,
-            message_id,
-            reply_to,
-            sender,
-            subject,
-            to,
-            uid,
-        } = self;
-        let mut lines = vec![
-            format!("subject: {subject}"),
-            format!("mid: {message_id}"),
-            format!("uid: {uid}"),
-            format!("box: {mailbox}"),
-        ];
-        item!(lines from);
-        item!(lines sender);
-        item!(lines to);
-        item!(lines cc);
-        item!(lines bcc);
-        item!(lines reply_to);
-        if let Some(inner) = date {
-            lines.push(format!("date: {inner}"));
-        }
-        if let Some(inner) = in_reply_to {
-            lines.push(format!("in_reply_to: {inner}"));
-        }
-        lines.join("\n")
     }
 
     /// Returns the list of senders.

@@ -68,7 +68,6 @@ impl EmailProvider {
         uid: u32,
     ) -> Result<EmailBody, FetchBodyError> {
         let mut session = self.session.lock().await;
-        session.select("INBOX").await.map_err(FetchBodyError::MailboxSelect)?;
         let mut stream = session
             .uid_fetch(uid.to_string(), "BODY.PEEK[]")
             .await
@@ -96,11 +95,6 @@ impl EmailProvider {
         FetchHeadersError,
     > {
         let mut session = self.session.lock().await;
-        let mailbox = Arc::from("INBOX");
-        session
-            .select(&mailbox)
-            .await
-            .map_err(FetchHeadersError::MailboxSelect)?;
         let mut messages = session
             .fetch("1:*", "(UID ENVELOPE)")
             .await
@@ -113,7 +107,6 @@ impl EmailProvider {
                     if let Some(envelope) = msg.envelope() {
                         headers.insert(EmailHeader::parse(
                             envelope,
-                            Arc::clone(&mailbox),
                             msg.uid.unwrap_or_default(),
                         ));
                     },
@@ -132,6 +125,32 @@ impl EmailProvider {
         ))
     }
 
+    /// List mailboxes.
+    ///
+    /// # Errors
+    ///
+    /// Cf. [`ListBoxError`].
+    pub async fn get_mailboxes(
+        &self,
+    ) -> Result<(Vec<Arc<str>>, Vec<ListBoxError>), ListBoxError> {
+        let mut session = self.session.lock().await;
+        let mut res = vec![];
+        let mut errors = vec![];
+        let mut mailboxes = session
+            .list(None, Some("*"))
+            .await
+            .map_err(ListBoxError::Request)?;
+        while let Some(next) = mailboxes.next().await {
+            match next {
+                Ok(mailbox) => res.push(Arc::from(mailbox.name())),
+                Err(err) => errors.push(ListBoxError::Request(err)),
+            }
+        }
+        drop(mailboxes);
+        drop(session);
+        Ok((res, errors))
+    }
+
     /// List unseen emails.
     ///
     /// # Errors
@@ -139,12 +158,28 @@ impl EmailProvider {
     /// Cf. [`UnseenError`].
     pub async fn get_unseen(&self) -> Result<HashSet<u32>, UnseenError> {
         let mut session = self.session.lock().await;
-        let mailbox = Arc::from("INBOX");
-        session.select(&mailbox).await.map_err(UnseenError::MailboxSelect)?;
         let uids =
             session.uid_search("UNSEEN").await.map_err(UnseenError::Request)?;
         drop(session);
         Ok(uids)
+    }
+
+    /// Select a different mailbox.
+    ///
+    /// # Errors
+    ///
+    /// Cf. [`SelectBoxError`].
+    pub async fn select_mailbox(
+        &self,
+        name: &str,
+    ) -> Result<(), SelectBoxError> {
+        self.session
+            .lock()
+            .await
+            .select(name)
+            .await
+            .map_err(SelectBoxError::Request)?;
+        Ok(())
     }
 }
 
@@ -164,11 +199,17 @@ error!(FetchBodyError:
 );
 
 error!(FetchHeadersError:
-    MailboxSelect ImapError: "Failed to select mailbox",
     Request ImapError: "Connection error",
 );
 
 error!(UnseenError:
-    MailboxSelect ImapError: "Failed to select mailbox",
     Request ImapError: "Connection error",
+);
+
+error!(ListBoxError:
+    Request ImapError: "Connection error",
+);
+
+error!(SelectBoxError:
+    Request ImapError: "Failed to select mailbox",
 );
