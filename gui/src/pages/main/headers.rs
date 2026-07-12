@@ -15,7 +15,9 @@ use crate::ui::style::{TXT_COLOUR, UNSEEN_COLOUR, YELLOW, grey};
 /// Shared header.
 pub type Header = ArMx<EmailHeader>;
 /// Shared list of headers.
-pub type Headers = ArMx<Vec<Header>>;
+///
+/// None means that it is loading, Some(vec![]) means the mailbox is empty.
+pub type Headers = ArMx<Option<Vec<Header>>>;
 
 /// Page to display the list of headers.
 #[derive(Default)]
@@ -54,9 +56,14 @@ impl Page for HeadersPage {
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let unseen = lock!(self.unseen);
-        let headers = lock!(self.headers);
-        if headers.is_empty() {
+        let Some(headers) = &*lock!(self.headers) else {
             return container(txt("Loading headers...").color(YELLOW))
+                .center(Length::Fill)
+                .width(Length::Fixed(200.))
+                .into();
+        };
+        if headers.is_empty() {
+            return container(txt("No emails in this folder."))
                 .center(Length::Fill)
                 .width(Length::Fixed(200.))
                 .into();

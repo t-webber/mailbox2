@@ -101,9 +101,10 @@ impl MainPage {
         headers: Headers,
         provider: Provider,
     ) -> Option<&'static str> {
+        *lock!(headers) = None;
         match provider.get_headers().await {
             Ok((new_headers, errors)) => {
-                *lock!(headers) = new_headers;
+                *lock!(headers) = Some(new_headers);
                 errors.first().map(FetchHeadersError::display)
             }
             Err(error) => Some(error.display()),
@@ -158,7 +159,7 @@ impl MainPage {
         name: Arc<str>,
     ) -> Option<&'static str> {
         provider
-            .select_mailbox(&name)
+            .select_mailbox(name.to_string())
             .await
             .map_or_else(|err| Some(err.display()), |()| None)
     }

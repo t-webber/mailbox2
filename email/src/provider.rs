@@ -11,6 +11,7 @@ use mailparse::MailParseError;
 use tokio::net::TcpStream;
 use tokio_native_tls::{TlsStream, native_tls};
 use tokio_stream::StreamExt as _;
+use utf7_imap::{decode_utf7_imap, encode_utf7_imap};
 
 use crate::body::EmailBody;
 use crate::header::EmailHeader;
@@ -142,7 +143,9 @@ impl EmailProvider {
             .map_err(ListBoxError::Request)?;
         while let Some(next) = mailboxes.next().await {
             match next {
-                Ok(mailbox) => res.push(Arc::from(mailbox.name())),
+                Ok(mailbox) => res.push(Arc::from(decode_utf7_imap(
+                    mailbox.name().to_owned(),
+                ))),
                 Err(err) => errors.push(ListBoxError::Request(err)),
             }
         }
@@ -171,12 +174,12 @@ impl EmailProvider {
     /// Cf. [`SelectBoxError`].
     pub async fn select_mailbox(
         &self,
-        name: &str,
+        name: String,
     ) -> Result<(), SelectBoxError> {
         self.session
             .lock()
             .await
-            .select(name)
+            .select(encode_utf7_imap(name))
             .await
             .map_err(SelectBoxError::Request)?;
         Ok(())
