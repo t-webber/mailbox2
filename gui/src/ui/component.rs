@@ -1,9 +1,14 @@
 use iced::border::{self, rounded};
+use iced::widget::scrollable::{Rail, Scroller};
 use iced::widget::text::IntoFragment;
-use iced::widget::{Button, Text, TextInput, button, text, text_input};
+use iced::widget::{
+    Button, Container, Text, TextInput, button, container, scrollable, text, text_input
+};
 use iced::{Color, Element, Font, Renderer, Theme};
 
-use crate::ui::style::{BORDER_WIDTH, RADIUS, TXT_COLOUR, TXT_FONT, grey};
+use crate::ui::style::{
+    BORDER_WIDTH, BTN_COLOUR, FOCUSED_COLOUR, RADIUS, TXT_COLOUR, TXT_FONT, grey
+};
 
 /// Text input.
 pub fn input<
@@ -68,4 +73,27 @@ pub fn txt<'txt, Content: IntoFragment<'txt>>(
     content: Content,
 ) -> Text<'txt, Theme, Renderer> {
     text(content).font(Font::MONOSPACE).size(TXT_FONT).color(TXT_COLOUR)
+}
+
+/// Wraps an element in a scrollable zone.
+pub fn scroll<
+    'disp,
+    Content: Into<Element<'disp, Msg, Theme, Renderer>>,
+    Msg: 'disp,
+>(
+    content: Content,
+) -> Container<'disp, Msg> {
+    container(scrollable(content).style(|theme, status| scrollable::Style {
+        container: container::Style::default(),
+        vertical_rail: Rail {
+            background: Some(BTN_COLOUR.into()),
+            border: border::rounded(0.).width(4.).color(Color::TRANSPARENT),
+            scroller: Scroller {
+                background: Color::TRANSPARENT.into(),
+                border: border::rounded(10.).width(10.).color(FOCUSED_COLOUR),
+            },
+        },
+        ..scrollable::default(theme, status)
+    }))
+    .padding(2.)
 }

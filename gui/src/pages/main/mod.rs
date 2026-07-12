@@ -130,8 +130,7 @@ impl Page for MainPage {
         } else {
             row!(
                 providers,
-                container(self.headers.view().map(MainMessage::Headers))
-                    .width(250.),
+                self.headers.view().map(MainMessage::Headers),
                 container(self.body.view().map(MainMessage::Body))
                     .width(Length::Fill),
             )
