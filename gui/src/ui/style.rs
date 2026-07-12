@@ -18,6 +18,9 @@ pub const RED: Color = Color::from_rgb8(0xe0, 0x6c, 0x75);
 /// Colour of unfocused button.
 pub const FOCUSED_COLOUR: Color = Color::from_rgb8(75, 75, 150);
 
+/// Link colour.
+pub const LINK_COLOUR: Color = Color::from_rgb8(100, 100, 200);
+
 /// Radius of borders.
 pub const RADIUS: f32 = 4.;
 

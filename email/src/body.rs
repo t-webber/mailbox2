@@ -72,4 +72,10 @@ impl EmailBody {
         this.add(&parse_mail(raw)?)?;
         Ok(this)
     }
+
+    /// Returns the plain email content.
+    #[must_use]
+    pub fn plain(&self) -> &str {
+        &self.txt
+    }
 }

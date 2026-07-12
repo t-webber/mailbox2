@@ -8,6 +8,9 @@ iced.workspace = true
 mailbox-shared.workspace = true
 mailbox-email.workspace = true
 tokio.workspace = true
+linkify.workspace = true
+url.workspace = true
+open = "5.3.6"
 
 [lints]
 workspace = true

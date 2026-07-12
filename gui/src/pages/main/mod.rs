@@ -10,7 +10,8 @@ use iced::{Alignment, Length, Task};
 use mailbox_email::{EmailBody, FetchHeadersError};
 use mailbox_shared::{ArMx, lock};
 
-use crate::pages::main::body::{BodyMsg, BodyPage};
+pub use crate::pages::main::body::BodyMsg;
+use crate::pages::main::body::BodyPage;
 pub use crate::pages::main::headers::HeadersMsg;
 use crate::pages::main::headers::{Headers, HeadersPage};
 pub use crate::pages::main::select_provider::SelectProviderMsg;
