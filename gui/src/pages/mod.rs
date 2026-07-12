@@ -84,8 +84,8 @@ impl Page for GuiApp {
                         },
                     );
                 },
-            GuiAppMessage::None
-            | GuiAppMessage::Main(MainMessage::Headers(())) => (),
+            GuiAppMessage::None => (),
+            GuiAppMessage::Main(MainMessage::Headers(_)) => todo!(),
             GuiAppMessage::Main(MainMessage::Loaded(error)) => {
                 if let Some(str) = error {
                     self.error(str);

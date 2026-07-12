@@ -32,11 +32,6 @@ impl MainPage {
         self.error = Some(error);
     }
 
-    /// Sets the loading status.
-    pub const fn loading(&mut self, loading: bool) {
-        self.loading = loading;
-    }
-
     /// Fetch all the headers for the current mailbox.
     ///
     /// Returns the first error if any.
@@ -53,6 +48,11 @@ impl MainPage {
             }
             Err(error) => Some(error.display()),
         }
+    }
+
+    /// Sets the loading status.
+    pub const fn loading(&mut self, loading: bool) {
+        self.loading = loading;
     }
 
     /// Creates a new page.
@@ -100,7 +100,7 @@ impl Page for MainPage {
             row!(
                 providers,
                 container(self.headers.view().map(MainMessage::Headers))
-                    .width(300.),
+                    .width(250.),
                 Space::new().width(Length::Fill)
             )
         }
@@ -111,10 +111,10 @@ impl Page for MainPage {
 /// Message for the main provider panel.
 #[derive(Clone, Debug)]
 pub enum MainMessage {
-    /// The headers finished loading.
-    Loaded(Option<&'static str>),
     /// Message from the header list.
     Headers(HeadersMsg),
+    /// The headers finished loading.
+    Loaded(Option<&'static str>),
     /// Message from the provider selector.
     SelectProvider(SelectProviderMsg),
 }

@@ -1513,6 +1513,7 @@ name = "mailbox-email"
 version = "0.1.0"
 dependencies = [
  "async-imap",
+ "chrono",
  "mailbox-shared",
  "mailparse",
  "sqlx",

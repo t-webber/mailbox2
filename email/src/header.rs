@@ -4,6 +4,7 @@ use alloc::borrow::Cow;
 use alloc::sync::Arc;
 
 use async_imap::imap_proto::{Address, Envelope};
+use chrono::{DateTime, Datelike as _, FixedOffset, Timelike as _};
 
 use crate::subject_decoder::decode_subject;
 
@@ -35,7 +36,7 @@ pub struct EmailHeader {
     /// Carbon copy.
     pub cc: Vec<String>,
     /// Sent date.
-    pub date: Option<String>,
+    pub date: Option<DateTime<FixedOffset>>,
     /// User received from.
     pub from: Vec<String>,
     /// Thread conversation email.
@@ -69,7 +70,14 @@ impl EmailHeader {
             uid,
             bcc: serialises_addresses(envelope.bcc.as_ref()),
             cc: serialises_addresses(envelope.cc.as_ref()),
-            date: field!(envelope.date).map(Cow::into_owned),
+            date: if let Some(raw_date) = field!(envelope.date)
+                && let Ok(date) =
+                    DateTime::parse_from_rfc2822(raw_date.as_ref())
+            {
+                Some(date)
+            } else {
+                None
+            },
             in_reply_to: field!(envelope.in_reply_to).map(Cow::into_owned),
             reply_to: serialises_addresses(envelope.reply_to.as_ref()),
             sender: serialises_addresses(envelope.sender.as_ref()),
@@ -82,6 +90,23 @@ impl EmailHeader {
 }
 
 impl EmailHeader {
+    /// Returns the sent date, if present.
+    #[must_use]
+    pub fn date(&self) -> String {
+        self.date
+            .map(|dt| {
+                format!(
+                    "{:02}/{:02}/{:02} {:02}:{:02}",
+                    dt.day(),
+                    dt.month(),
+                    dt.year().rem_euclid(2000i32),
+                    dt.hour(),
+                    dt.minute()
+                )
+            })
+            .unwrap_or_default()
+    }
+
     /// Pretty-print for cli usage.
     #[must_use]
     pub fn debug(&self) -> String {
