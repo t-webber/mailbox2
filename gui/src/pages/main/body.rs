@@ -7,7 +7,6 @@ use iced::{Element, Font, Length};
 use linkify::{LinkFinder, LinkKind};
 use mailbox_email::EmailBody;
 use mailbox_shared::{ArMx, lock};
-use url::Url;
 
 use crate::Page;
 use crate::ui::component::txt;
@@ -49,10 +48,14 @@ impl BodyPage {
             prev_end = link.end();
             spans.push(match link.kind() {
                 LinkKind::Url => span(
-                    Url::parse(link.as_str())
-                        .ok()
-                        .and_then(|url| Some(url.host_str()?.to_owned()))
-                        .unwrap_or_default(),
+                    link.as_str()
+                        .trim_start_matches("https://")
+                        .trim_start_matches("http://")
+                        .trim_start_matches("www.")
+                        .split('/')
+                        .next()
+                        .unwrap_or_default()
+                        .to_owned(),
                 )
                 .color(LINK_COLOUR)
                 .link(link.as_str()),

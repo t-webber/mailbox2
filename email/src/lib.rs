@@ -7,8 +7,6 @@
 
 /// Body of the email.
 mod body;
-/// Handles database connections.
-mod db;
 /// Structure to handle headers.
 mod header;
 /// Implements the provider trait.
