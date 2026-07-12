@@ -1,12 +1,16 @@
+/// Displays the body of an email.
+mod body;
 /// Lists the headers of the current mailbox.
 mod headers;
 /// Left bar to select the active provider.
 mod select_provider;
-use iced::widget::{Space, container, row};
-use iced::{Alignment, Length, Task};
-use mailbox_email::FetchHeadersError;
-use mailbox_shared::lock;
 
+use iced::widget::{container, row};
+use iced::{Alignment, Length, Task};
+use mailbox_email::{EmailBody, FetchHeadersError};
+use mailbox_shared::{ArMx, lock};
+
+use crate::pages::main::body::{BodyMsg, BodyPage};
 pub use crate::pages::main::headers::HeadersMsg;
 use crate::pages::main::headers::{Headers, HeadersPage};
 pub use crate::pages::main::select_provider::SelectProviderMsg;
@@ -16,6 +20,8 @@ use crate::{Page, Provider, Providers};
 
 /// Main page for one provider.
 pub struct MainPage {
+    /// Body to display.
+    body: BodyPage,
     /// Error to display.
     error: Option<&'static str>,
     /// List of headers.
@@ -35,15 +41,30 @@ impl MainPage {
     /// Fetch all the headers for the current mailbox.
     ///
     /// Returns the first error if any.
+    async fn fetch_body(
+        uid: u32,
+        body: ArMx<Option<EmailBody>>,
+        provider: Provider,
+    ) -> Option<&'static str> {
+        match provider.get_body(uid).await {
+            Ok(new_body) => {
+                *lock!(body) = Some(new_body);
+                None
+            }
+            Err(error) => Some(error.display()),
+        }
+    }
+
+    /// Fetch all the headers for the current mailbox.
+    ///
+    /// Returns the first error if any.
     async fn fetch_headers(
         headers: Headers,
         provider: Provider,
     ) -> Option<&'static str> {
         match provider.get_headers().await {
             Ok((new_headers, errors)) => {
-                let mut guard = lock!(headers);
-                *guard = new_headers;
-                drop(guard);
+                *lock!(headers) = new_headers;
                 errors.first().map(FetchHeadersError::display)
             }
             Err(error) => Some(error.display()),
@@ -58,11 +79,20 @@ impl MainPage {
     /// Creates a new page.
     pub fn new(current: Provider, list: Providers) -> Self {
         Self {
+            body: BodyPage::default(),
             provider_selector: SelectProviderPage::new(current, list),
             headers: HeadersPage::default(),
             error: None,
             loading: true,
         }
+    }
+
+    /// Fetches the body for that header and displays it.
+    pub fn open_header(&mut self, uid: u32) -> Task<Option<&'static str>> {
+        self.headers.set_current(uid);
+        let body = self.body.loading();
+        let provider = self.provider_selector.current();
+        Task::perform(Self::fetch_body(uid, body, provider), |res| res)
     }
 
     /// Populate the headers and return a task.
@@ -101,7 +131,8 @@ impl Page for MainPage {
                 providers,
                 container(self.headers.view().map(MainMessage::Headers))
                     .width(250.),
-                Space::new().width(Length::Fill)
+                container(self.body.view().map(MainMessage::Body))
+                    .width(Length::Fill),
             )
         }
         .into()
@@ -111,6 +142,8 @@ impl Page for MainPage {
 /// Message for the main provider panel.
 #[derive(Clone, Debug)]
 pub enum MainMessage {
+    /// Message from the email body pane.
+    Body(BodyMsg),
     /// Message from the header list.
     Headers(HeadersMsg),
     /// The headers finished loading.

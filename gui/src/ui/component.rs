@@ -1,11 +1,9 @@
 use iced::border::{self, rounded};
 use iced::widget::text::IntoFragment;
 use iced::widget::{Button, Text, TextInput, button, text, text_input};
-use iced::{Element, Font, Renderer, Theme};
+use iced::{Color, Element, Font, Renderer, Theme};
 
-use crate::ui::style::{
-    BORDER_WIDTH, BTN_COLOUR, FOCUSED_COLOUR, RADIUS, TXT_COLOUR, TXT_FONT, grey
-};
+use crate::ui::style::{BORDER_WIDTH, RADIUS, TXT_COLOUR, TXT_FONT, grey};
 
 /// Text input.
 pub fn input<
@@ -48,13 +46,15 @@ pub fn btn<
     msg: Msg,
     focus: bool,
     round: bool,
+    background: Color,
+    focused_bg: Color,
 ) -> Button<'disp, Msg> {
     button(content).on_press(msg).style(move |_, st| button::Style {
         background: Some(
             if matches!(st, button::Status::Active) && !focus {
-                BTN_COLOUR
+                background
             } else {
-                FOCUSED_COLOUR
+                focused_bg
             }
             .into(),
         ),

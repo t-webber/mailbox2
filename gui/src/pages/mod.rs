@@ -84,8 +84,17 @@ impl Page for GuiApp {
                         },
                     );
                 },
-            GuiAppMessage::None => (),
-            GuiAppMessage::Main(MainMessage::Headers(_)) => todo!(),
+            GuiAppMessage::Main(MainMessage::Body(()))
+            | GuiAppMessage::None => (),
+            GuiAppMessage::Main(MainMessage::Headers(header)) =>
+                if let GuiAppPage::Main(main) = &mut self.page {
+                    return main.open_header(header).map(|err| {
+                        err.map_or_else(
+                            || GuiAppMessage::None,
+                            GuiAppMessage::Error,
+                        )
+                    });
+                },
             GuiAppMessage::Main(MainMessage::Loaded(error)) => {
                 if let Some(str) = error {
                     self.error(str);

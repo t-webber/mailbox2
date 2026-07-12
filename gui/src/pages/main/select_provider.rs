@@ -3,6 +3,7 @@ use iced::widget::{Column, Space, column};
 use mailbox_shared::lock;
 
 use crate::ui::component::{btn, txt};
+use crate::ui::style::{BTN_COLOUR, FOCUSED_COLOUR};
 use crate::{Page, Provider, Providers};
 
 /// Main page for one provider.
@@ -40,10 +41,25 @@ impl Page for SelectProviderPage {
             Column::with_children(lock!(self.list).iter().map(|provider| {
                 let alias = provider.alias();
                 let msg = SelectProviderMsg::SelectProvider(provider.clone());
-                btn(txt(alias), msg, current == alias, false).into()
+                btn(
+                    txt(alias),
+                    msg,
+                    current == alias,
+                    false,
+                    BTN_COLOUR,
+                    FOCUSED_COLOUR,
+                )
+                .into()
             }),),
             Space::new().height(Length::Fill),
-            btn(txt("+"), SelectProviderMsg::AddProvider, false, false)
+            btn(
+                txt("+"),
+                SelectProviderMsg::AddProvider,
+                false,
+                false,
+                BTN_COLOUR,
+                FOCUSED_COLOUR
+            )
         )
         .into()
     }

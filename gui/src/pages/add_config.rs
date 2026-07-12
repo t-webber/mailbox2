@@ -7,7 +7,7 @@ use mailbox_shared::EmailConfig;
 
 use crate::Page;
 use crate::ui::component::{btn, input, txt};
-use crate::ui::style::{RED, TXT_FONT, YELLOW};
+use crate::ui::style::{BTN_COLOUR, FOCUSED_COLOUR, RED, TXT_FONT, YELLOW};
 
 /// Page to enter an email provider configuration.
 ///
@@ -127,7 +127,15 @@ impl Page for AddConfigPage {
                 AddConfigMessage::Port,
             )
             .into(),
-            btn(txt("Submit"), AddConfigMessage::Submit, false, true).into(),
+            btn(
+                txt("Submit"),
+                AddConfigMessage::Submit,
+                false,
+                true,
+                BTN_COLOUR,
+                FOCUSED_COLOUR,
+            )
+            .into(),
             if self.loading {
                 txt("Establishing connection...").color(YELLOW)
             } else if self.error.is_empty() {
