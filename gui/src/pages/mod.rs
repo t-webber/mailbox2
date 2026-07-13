@@ -73,6 +73,15 @@ impl Page for GuiApp {
                 },
             GuiAppMessage::Main(MainMessage::Error(Some(error)))
             | GuiAppMessage::Error(error) => self.error(error),
+            GuiAppMessage::AddConfig(AddConfigMessage::Cancel(current)) => {
+                self.page = GuiAppPage::Main(MainPage::new(
+                    current,
+                    Arc::clone(&self.providers),
+                ));
+                if let GuiAppPage::Main(main) = &mut self.page {
+                    return main.boot().map(GuiAppMessage::Main);
+                }
+            }
             GuiAppMessage::AddConfig(msg) =>
                 if let GuiAppPage::AddConfig(page) = &mut self.page
                     && let Some(email) = page.update(msg)
@@ -113,8 +122,8 @@ impl Page for GuiApp {
                 }
             }
             GuiAppMessage::Main(MainMessage::SelectProvider(
-                SelectProviderMsg::AddProvider,
-            )) => self.page = GuiAppPage::AddConfig(AddConfigPage::default()),
+                SelectProviderMsg::AddProvider(alias),
+            )) => self.page = GuiAppPage::AddConfig(AddConfigPage::old(alias)),
             GuiAppMessage::Main(MainMessage::SelectProvider(
                 SelectProviderMsg::SelectProvider(provider),
             )) =>

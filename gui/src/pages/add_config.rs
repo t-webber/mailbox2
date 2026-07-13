@@ -1,13 +1,15 @@
 extern crate alloc;
 use alloc::sync::Arc;
 
-use iced::widget::{Column, container};
+use iced::widget::{Column, container, row};
 use iced::{Alignment, Element, Length};
 use mailbox_shared::EmailConfig;
 
-use crate::Page;
 use crate::ui::component::{btn, input, txt};
-use crate::ui::style::{BTN_COLOUR, FOCUSED_COLOUR, RED, TXT_FONT, YELLOW};
+use crate::ui::style::{
+    BTN_COLOUR, FOCUSED_COLOUR, RED, TXT_FONT, YELLOW, grey
+};
+use crate::{Page, Provider};
 
 /// Page to enter an email provider configuration.
 ///
@@ -26,6 +28,7 @@ pub struct AddConfigPage {
     loading: bool,
     password: Arc<str>,
     port: u16,
+    previous: Option<Provider>,
     user: Arc<str>,
 }
 
@@ -38,6 +41,12 @@ impl AddConfigPage {
     /// Marks the UI as loading.
     pub const fn loading(&mut self, loading: bool) {
         self.loading = loading;
+    }
+
+    /// Creates a new configuration adding page with a fallback on this char if
+    /// cancelled.
+    pub fn old(previous: Provider) -> Self {
+        Self { previous: Some(previous), ..Self::default() }
     }
 
     /// Makes an [`EmailConfig`] from the form data.
@@ -95,11 +104,20 @@ impl Page for AddConfigPage {
                     return Some(self.to_cfg());
                 },
             AddConfigMessage::Error(error) => self.error = error,
+            AddConfigMessage::Cancel(_) => (),
         }
         None
     }
 
     fn view(&self) -> Element<'_, AddConfigMessage> {
+        let submit = btn(
+            txt("Submit"),
+            AddConfigMessage::Submit,
+            false,
+            true,
+            BTN_COLOUR,
+            FOCUSED_COLOUR,
+        );
         let elements: [Element<'_, AddConfigMessage>; 8] = [
             txt("New email provider").size(TXT_FONT + 2).into(),
             input(
@@ -127,15 +145,23 @@ impl Page for AddConfigPage {
                 AddConfigMessage::Port,
             )
             .into(),
-            btn(
-                txt("Submit"),
-                AddConfigMessage::Submit,
-                false,
-                true,
-                BTN_COLOUR,
-                FOCUSED_COLOUR,
-            )
-            .into(),
+            if let Some(prev) = &self.previous {
+                row!(
+                    submit,
+                    btn(
+                        txt("Cancel"),
+                        AddConfigMessage::Cancel(prev.clone()),
+                        false,
+                        true,
+                        grey(50),
+                        grey(100),
+                    ),
+                )
+                .spacing(4.)
+                .into()
+            } else {
+                submit.into()
+            },
             if self.loading {
                 txt("Establishing connection...").color(YELLOW)
             } else if self.error.is_empty() {
@@ -170,6 +196,7 @@ impl Page for AddConfigPage {
 #[derive(Clone, Debug)]
 pub enum AddConfigMessage {
     Alias(Option<char>),
+    Cancel(Provider),
     Domain(Arc<str>),
     Error(&'static str),
     Password(Arc<str>),

@@ -54,7 +54,7 @@ impl Page for SelectProviderPage {
             Space::new().height(Length::Fill),
             btn(
                 txt("+"),
-                SelectProviderMsg::AddProvider,
+                SelectProviderMsg::AddProvider(self.current.clone()),
                 false,
                 false,
                 BTN_COLOUR,
@@ -69,7 +69,10 @@ impl Page for SelectProviderPage {
 #[derive(Clone, Debug)]
 pub enum SelectProviderMsg {
     /// Add a new provider.
-    AddProvider,
+    ///
+    /// Also contains the char of the provider to fallback to in case of
+    /// cancellation.
+    AddProvider(Provider),
     /// Select a new provider.
     SelectProvider(Provider),
 }
