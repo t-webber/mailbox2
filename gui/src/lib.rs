@@ -33,7 +33,7 @@ use alloc::sync::Arc;
 use core::mem::take;
 use std::sync::Mutex;
 
-use iced::{Element, Task};
+use iced::{Element, Subscription, Task};
 use mailbox_email::EmailProvider;
 use mailbox_shared::{ArMx, Config, LoadError, lock};
 
@@ -52,6 +52,11 @@ trait Page {
     type Task;
     /// Data passed to the children.
     type Update;
+
+    /// Subscribe to events, like keypresses.
+    fn subscription(&self) -> Subscription<Self::Message> {
+        Subscription::none()
+    }
 
     /// Updates the application based on incomming messages.
     fn update(&mut self, data: Self::Update) -> Self::Task;
@@ -110,6 +115,7 @@ impl GuiApp {
             Self::update,
             Self::view,
         )
+        .subscription(Self::subscription)
         .run()
         .map_err(GuiError::Runtime)?;
         Ok(())

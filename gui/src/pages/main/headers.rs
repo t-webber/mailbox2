@@ -101,6 +101,7 @@ impl Page for HeadersPage {
                     false,
                     grey(30),
                     grey(60),
+                    grey(90),
                 )
                 .into()
             })),

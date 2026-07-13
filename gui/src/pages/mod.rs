@@ -7,9 +7,12 @@ extern crate alloc;
 
 use alloc::sync::Arc;
 
+use iced::keyboard::Modifiers;
+use iced::keyboard::key::Named;
 use iced::widget::container;
 use iced::widget::container::Style;
-use iced::{Element, Length, Task};
+use iced::widget::operation::{focus_next, focus_previous};
+use iced::{Element, Length, Subscription, Task, keyboard};
 
 use crate::pages::add_config::{AddConfigMessage, AddConfigPage};
 use crate::pages::main::{MainMessage, MainPage, SelectProviderMsg};
@@ -25,6 +28,10 @@ pub enum GuiAppMessage {
     Authenticate,
     /// Display an error.
     Error(&'static str),
+    /// Tab.
+    FocusNext,
+    /// Shift tab.
+    FocusPrevious,
     /// Message for the main page.
     Main(MainMessage),
     /// Nothing to be done.
@@ -60,11 +67,28 @@ impl Page for GuiApp {
     type Task = Task<Self::Message>;
     type Update = Self::Message;
 
+    fn subscription(&self) -> Subscription<Self::Message> {
+        keyboard::listen().map(|event| {
+            if let keyboard::Event::KeyPressed { key, modifiers, .. } = event
+                && key == keyboard::Key::Named(Named::Tab)
+            {
+                if modifiers == Modifiers::SHIFT {
+                    return GuiAppMessage::FocusPrevious;
+                } else if modifiers == Modifiers::NONE {
+                    return GuiAppMessage::FocusNext;
+                }
+            }
+            GuiAppMessage::None
+        })
+    }
+
     fn update(&mut self, data: Self::Message) -> Self::Task {
         if let GuiAppPage::AddConfig(page) = &mut self.page {
             page.loading(false);
         }
         match data {
+            GuiAppMessage::FocusNext => return focus_next(),
+            GuiAppMessage::FocusPrevious => return focus_previous(),
             GuiAppMessage::Main(MainMessage::SelectMailbox(mailbox)) =>
                 if let GuiAppPage::Main(main) = &mut self.page {
                     return main

@@ -117,6 +117,7 @@ impl Page for AddConfigPage {
             true,
             BTN_COLOUR,
             FOCUSED_COLOUR,
+            FOCUSED_COLOUR,
         );
         let elements: [Element<'_, AddConfigMessage>; 8] = [
             txt("New email provider").size(TXT_FONT + 2).into(),
@@ -154,6 +155,7 @@ impl Page for AddConfigPage {
                         false,
                         true,
                         grey(50),
+                        grey(100),
                         grey(100),
                     ),
                 )

@@ -49,15 +49,18 @@ pub fn btn<
 >(
     content: Content,
     msg: Msg,
-    focus: bool,
+    current: bool,
     round: bool,
-    background: Color,
+    active_bg: Color,
     focused_bg: Color,
+    current_bg: Color,
 ) -> Button<'disp, Msg> {
     button(content).on_press(msg).style(move |_, st| button::Style {
         background: Some(
-            if matches!(st, button::Status::Active) && !focus {
-                background
+            if current {
+                current_bg
+            } else if matches!(st, button::Status::Active) {
+                active_bg
             } else {
                 focused_bg
             }

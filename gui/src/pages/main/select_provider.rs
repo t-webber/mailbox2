@@ -48,6 +48,7 @@ impl Page for SelectProviderPage {
                     false,
                     BTN_COLOUR,
                     FOCUSED_COLOUR,
+                    FOCUSED_COLOUR,
                 )
                 .into()
             }),),
@@ -58,6 +59,7 @@ impl Page for SelectProviderPage {
                 false,
                 false,
                 BTN_COLOUR,
+                FOCUSED_COLOUR,
                 FOCUSED_COLOUR
             )
         )
