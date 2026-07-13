@@ -10,6 +10,14 @@ pub use std::sync::Mutex as StdMutex;
 pub use config::{Config, EmailConfig, LoadError, SaveError};
 pub use tokio::sync::Mutex as TokioMutex;
 
+/// logs the work being done by the app.
+#[macro_export]
+macro_rules! log {
+    ($($arg:expr),*) => {{
+        //         eprintln!($($arg),*)
+    }};
+}
+
 /// helper to create error enumerations.
 #[macro_export]
 macro_rules! error {

@@ -6,7 +6,7 @@ use std::io;
 
 use async_imap::error::Error as ImapError;
 use async_imap::{Client, Session};
-use mailbox_shared::{ArMx, EmailConfig, StdMutex, TokioMutex, error};
+use mailbox_shared::{ArMx, EmailConfig, StdMutex, TokioMutex, error, log};
 use mailparse::MailParseError;
 use tokio::net::TcpStream;
 use tokio_native_tls::{TlsStream, native_tls};
@@ -40,6 +40,7 @@ impl EmailProvider {
     pub async fn auth(
         config: &EmailConfig,
     ) -> Result<Self, ImapConnectionError> {
+        log!("Authenticating {}", config.alias());
         let (user, password, domain, port) = config.values();
         let tcp = TcpStream::connect((domain, port))
             .await
@@ -56,6 +57,7 @@ impl EmailProvider {
             .await
             .map_err(|(err, _unauthenticated_client)| err)
             .map_err(ImapConnectionError::Login)?;
+        log!("Authenticated {}", config.alias());
         Ok(Self { alias: config.alias(), session: Arc::new(session.into()) })
     }
 
@@ -68,6 +70,7 @@ impl EmailProvider {
         &self,
         uid: u32,
     ) -> Result<EmailBody, FetchBodyError> {
+        log!("Fetching body of {uid}");
         let mut session = self.session.lock().await;
         let mut stream = session
             .uid_fetch(uid.to_string(), "BODY.PEEK[]")
@@ -77,10 +80,12 @@ impl EmailProvider {
             && let Some(body) =
                 message.map_err(FetchBodyError::FetchError)?.body()
         {
+            log!("Fetched body of {uid}");
             return EmailBody::parse(body).map_err(FetchBodyError::Parsing);
         }
         drop(stream);
         drop(session);
+        log!("Fetched body of {uid}");
         Err(FetchBodyError::NotFound(()))
     }
 
@@ -95,6 +100,7 @@ impl EmailProvider {
         (Vec<ArMx<EmailHeader>>, Vec<FetchHeadersError>),
         FetchHeadersError,
     > {
+        log!("Fetching headers");
         let mut session = self.session.lock().await;
         let mut messages = session
             .fetch("1:*", "(UID ENVELOPE)")
@@ -116,6 +122,7 @@ impl EmailProvider {
         }
         drop(messages);
         drop(session);
+        log!("Fetched {} headers", headers.len());
         Ok((
             headers
                 .into_iter()
@@ -134,6 +141,7 @@ impl EmailProvider {
     pub async fn get_mailboxes(
         &self,
     ) -> Result<(Vec<Arc<str>>, Vec<ListBoxError>), ListBoxError> {
+        log!("Fetching mailboxes");
         let mut session = self.session.lock().await;
         let mut res = vec![];
         let mut errors = vec![];
@@ -151,6 +159,7 @@ impl EmailProvider {
         }
         drop(mailboxes);
         drop(session);
+        log!("Fetched {} mailboxes", res.len());
         Ok((res, errors))
     }
 
@@ -160,10 +169,12 @@ impl EmailProvider {
     ///
     /// Cf. [`UnseenError`].
     pub async fn get_unseen(&self) -> Result<HashSet<u32>, UnseenError> {
+        log!("Fetch unseen emails");
         let mut session = self.session.lock().await;
         let uids =
             session.uid_search("UNSEEN").await.map_err(UnseenError::Request)?;
         drop(session);
+        log!("Fetch {} unseen emails", uids.len());
         Ok(uids)
     }
 
