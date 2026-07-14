@@ -87,6 +87,12 @@ impl Page for GuiApp {
             page.loading(false);
         }
         match data {
+            GuiAppMessage::Main(MainMessage::LoadHeaders(headers)) =>
+                if let GuiAppPage::Main(main) = &mut self.page {
+                    return Task::done(GuiAppMessage::Main(
+                        main.add_headers(&headers),
+                    ));
+                },
             GuiAppMessage::FocusNext => return focus_next(),
             GuiAppMessage::FocusPrevious => return focus_previous(),
             GuiAppMessage::Main(MainMessage::SelectMailbox(mailbox)) =>

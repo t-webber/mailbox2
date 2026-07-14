@@ -9,17 +9,20 @@ mod select_provider;
 
 extern crate alloc;
 use alloc::sync::Arc;
+use core::mem::take;
 use std::collections::HashSet;
 
+use iced::futures::SinkExt as _;
+use iced::stream::channel;
 use iced::widget::{column, container, row};
 use iced::{Alignment, Length, Task};
-use mailbox_email::{EmailBody, FetchHeadersError, ListBoxError};
+use mailbox_email::{EmailBody, EmailHeader, FetchHeadersError, ListBoxError};
 use mailbox_shared::{ArMx, lock};
 
 pub use crate::pages::main::body::BodyMsg;
 use crate::pages::main::body::BodyPage;
 pub use crate::pages::main::headers::HeadersMsg;
-use crate::pages::main::headers::{Headers, HeadersPage};
+use crate::pages::main::headers::HeadersPage;
 use crate::pages::main::select_box::{Mailboxes, SelectBoxPage};
 pub use crate::pages::main::select_provider::SelectProviderMsg;
 use crate::pages::main::select_provider::SelectProviderPage;
@@ -43,6 +46,19 @@ pub struct MainPage {
 }
 
 impl MainPage {
+    /// Adds new headers fetched by a stream.
+    pub fn add_headers(
+        &mut self,
+        headers: &[Result<Arc<EmailHeader>, FetchHeadersError>],
+    ) -> MainMessage {
+        self.headers.extend(
+            headers.iter().filter_map(|res| res.as_ref().ok().cloned()),
+        );
+        MainMessage::Error(headers.iter().find_map(|res| {
+            if let Err(err) = res { Some(err.display()) } else { None }
+        }))
+    }
+
     /// Populates the main page data with asynchronous workers.
     pub fn boot(&mut self) -> Task<MainMessage> {
         let provider = self.provider_selector.current();
@@ -97,18 +113,21 @@ impl MainPage {
     /// Fetch all the headers for the current mailbox.
     ///
     /// Returns the first error if any.
-    async fn fetch_headers(
-        headers: Headers,
-        provider: Provider,
-    ) -> Option<&'static str> {
-        *lock!(headers) = None;
-        match provider.get_headers().await {
-            Ok((new_headers, errors)) => {
-                *lock!(headers) = Some(new_headers);
-                errors.first().map(FetchHeadersError::display)
+    fn fetch_headers(provider: &Provider) -> Task<MainMessage> {
+        let mut rx = provider.get_headers();
+        Task::stream(channel(0, async move |mut output| {
+            let mut batch = vec![];
+            while rx.recv_many(&mut batch, 32).await > 0 {
+                drop(
+                    output
+                        .send(MainMessage::LoadHeaders(Arc::from(take(
+                            &mut batch,
+                        ))))
+                        .await,
+                );
             }
-            Err(error) => Some(error.display()),
-        }
+            drop(output.send(MainMessage::Loaded(None)).await);
+        }))
     }
 
     /// Fetch the list of unseen emails.
@@ -173,20 +192,16 @@ impl MainPage {
         name: Arc<str>,
     ) -> Task<MainMessage> {
         self.mailbox_selector.update(Arc::clone(&name));
-        let headers = self.headers.list();
         let unseen = self.headers.unseen();
         let provider = self.provider_selector.current();
         let provider1 = provider.clone();
+
+        self.headers.empty();
+
         Task::perform(Self::select_box(provider1, name), MainMessage::Error)
             .then(move |_| {
                 Task::batch([
-                    Task::perform(
-                        Self::fetch_headers(
-                            Arc::clone(&headers),
-                            provider.clone(),
-                        ),
-                        MainMessage::Loaded,
-                    ),
+                    Self::fetch_headers(&provider),
                     Task::perform(
                         Self::fetch_unseen(
                             Arc::clone(&unseen),
@@ -211,18 +226,7 @@ impl Page for MainPage {
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let providers =
             self.provider_selector.view().map(MainMessage::SelectProvider);
-        if self.loading {
-            row!(
-                providers,
-                container(
-                    txt("loading...")
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .align_x(Alignment::Center)
-                        .align_y(Alignment::Center)
-                )
-            )
-        } else {
+        if self.headers.has_some() {
             row!(
                 providers,
                 column!(
@@ -236,6 +240,17 @@ impl Page for MainPage {
                 txt(" "),
                 container(self.body.view().map(MainMessage::Body))
                     .width(Length::Fill),
+            )
+        } else {
+            row!(
+                providers,
+                container(
+                    txt("loading...")
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .align_x(Alignment::Center)
+                        .align_y(Alignment::Center)
+                )
             )
         }
         .into()
@@ -251,6 +266,8 @@ pub enum MainMessage {
     Error(Option<&'static str>),
     /// Message from the header list.
     Headers(HeadersMsg),
+    /// Receive some other headers from the fetcher.
+    LoadHeaders(Arc<[Result<Arc<EmailHeader>, FetchHeadersError>]>),
     /// The headers finished loading.
     Loaded(Option<&'static str>),
     /// Select a mailbox.

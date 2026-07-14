@@ -13,11 +13,7 @@ use crate::ui::component::{btn, scroll, txt};
 use crate::ui::style::{TXT_COLOUR, UNSEEN_COLOUR, YELLOW, grey};
 
 /// Shared header.
-pub type Header = ArMx<EmailHeader>;
-/// Shared list of headers.
-///
-/// None means that it is loading, Some(vec![]) means the mailbox is empty.
-pub type Headers = ArMx<Option<Vec<Header>>>;
+pub type Header = Arc<EmailHeader>;
 
 /// Page to display the list of headers.
 #[derive(Default)]
@@ -25,15 +21,29 @@ pub struct HeadersPage {
     /// Currently opened header.
     current: Option<u32>,
     /// List of headers.
-    headers: Headers,
+    headers: Option<Vec<Header>>,
     /// List of unseen emails.
     unseen: ArMx<HashSet<u32>>,
 }
 
 impl HeadersPage {
-    /// Returns the list of headers.
-    pub fn list(&self) -> Headers {
-        Arc::clone(&self.headers)
+    /// Empties the header list.
+    pub fn empty(&mut self) {
+        self.headers = None;
+    }
+
+    /// Extends the list of headers with some new ones.
+    pub fn extend<I: IntoIterator<Item = Header>>(&mut self, iter: I) {
+        if let Some(vec) = &mut self.headers {
+            vec.extend(iter);
+        } else {
+            self.headers = Some(iter.into_iter().collect());
+        }
+    }
+
+    /// Returns true if there is at least one header.
+    pub fn has_some(&self) -> bool {
+        self.headers.as_ref().is_some_and(|x| !x.is_empty())
     }
 
     /// Sets the currently opened header.
@@ -56,7 +66,7 @@ impl Page for HeadersPage {
 
     fn view(&self) -> iced::Element<'_, Self::Message> {
         let unseen = lock!(self.unseen);
-        let Some(headers) = &*lock!(self.headers) else {
+        let Some(headers) = &self.headers else {
             return container(txt("Loading headers...").color(YELLOW))
                 .center(Length::Fill)
                 .width(Length::Fixed(200.))
@@ -70,9 +80,8 @@ impl Page for HeadersPage {
         }
         scroll(
             Column::with_children(headers.iter().map(|header| {
-                let lock = lock!(header);
-                debug_assert_eq!(lock.date().len(), 14, "invalid format");
-                let colour = if unseen.contains(&lock.uid) {
+                debug_assert_eq!(header.date().len(), 14, "invalid format");
+                let colour = if unseen.contains(&header.uid) {
                     UNSEEN_COLOUR
                 } else {
                     TXT_COLOUR
@@ -80,7 +89,7 @@ impl Page for HeadersPage {
                 btn(
                     column!(
                         container(
-                            txt(lock.from())
+                            txt(header.from())
                                 .wrapping(Wrapping::None)
                                 .color(colour)
                         )
@@ -88,7 +97,7 @@ impl Page for HeadersPage {
                         .height(Length::Shrink)
                         .width(Length::Fixed(200.)),
                         container(
-                            txt(lock.subject().to_owned())
+                            txt(header.subject().to_owned())
                                 .wrapping(Wrapping::None)
                                 .color(colour)
                         )
@@ -96,8 +105,8 @@ impl Page for HeadersPage {
                         .clip(true)
                         .height(Length::Shrink)
                     ),
-                    lock.uid,
-                    Some(lock.uid) == self.current,
+                    header.uid,
+                    Some(header.uid) == self.current,
                     false,
                     grey(30),
                     grey(60),

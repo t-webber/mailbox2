@@ -1,14 +1,14 @@
 extern crate alloc;
-use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use std::collections::HashSet;
 use std::io;
 
 use async_imap::error::Error as ImapError;
 use async_imap::{Client, Session};
-use mailbox_shared::{ArMx, EmailConfig, StdMutex, TokioMutex, error, log};
+use mailbox_shared::{EmailConfig, TokioMutex, error, log};
 use mailparse::MailParseError;
 use tokio::net::TcpStream;
+use tokio::sync::mpsc;
 use tokio_native_tls::{TlsStream, native_tls};
 use tokio_stream::StreamExt as _;
 use utf7_imap::{decode_utf7_imap, encode_utf7_imap};
@@ -94,43 +94,54 @@ impl EmailProvider {
     /// # Errors
     ///
     /// Cf. [`FetchHeadersError`].
-    pub async fn get_headers(
+    #[must_use]
+    pub fn get_headers(
         &self,
-    ) -> Result<
-        (Vec<ArMx<EmailHeader>>, Vec<FetchHeadersError>),
-        FetchHeadersError,
-    > {
+    ) -> mpsc::Receiver<Result<Arc<EmailHeader>, FetchHeadersError>> {
         log!("Fetching headers");
-        let mut session = self.session.lock().await;
-        let mut messages = session
-            .fetch("1:*", "(UID ENVELOPE)")
-            .await
-            .map_err(FetchHeadersError::Request)?;
-        let mut headers = BTreeSet::new();
-        let mut errors = vec![];
-        while let Some(res_msg) = messages.next().await {
-            match res_msg {
-                Ok(msg) =>
-                    if let Some(envelope) = msg.envelope() {
-                        headers.insert(EmailHeader::parse(
-                            envelope,
-                            msg.uid.unwrap_or_default(),
-                        ));
-                    },
-                Err(err) => errors.push(FetchHeadersError::Request(err)),
+        let (tx, rx) = mpsc::channel(32);
+        let async_session = Arc::clone(&self.session);
+
+        tokio::spawn(async move {
+            let mut session = async_session.lock().await;
+            let mut messages = match session
+                .fetch("1:*", "(UID ENVELOPE)")
+                .await
+                .map_err(FetchHeadersError::Request)
+            {
+                Ok(messages) => messages,
+                Err(res) => {
+                    if let Err(_err) = tx.send(Err(res)).await {
+                        log!("Fetching headers bailed: {_err}");
+                    }
+                    return;
+                }
+            };
+
+            while let Some(res) = messages.next().await {
+                if let Err(_err) = tx
+                    .send(match res {
+                        Ok(msg) =>
+                            if let Some(envelope) = msg.envelope() {
+                                Ok(Arc::new(EmailHeader::parse(
+                                    envelope,
+                                    msg.uid.unwrap_or_default(),
+                                )))
+                            } else {
+                                Err(FetchHeadersError::NoHeader(()))
+                            },
+                        Err(err) => Err(FetchHeadersError::Request(err)),
+                    })
+                    .await
+                {
+                    log!("Fetching headers bailed: {_err}");
+                }
             }
-        }
-        drop(messages);
-        drop(session);
-        log!("Fetched {} headers", headers.len());
-        Ok((
-            headers
-                .into_iter()
-                .rev()
-                .map(|header| Arc::new(StdMutex::new(header)))
-                .collect(),
-            errors,
-        ))
+            drop(messages);
+            drop(session);
+        });
+
+        rx
     }
 
     /// List mailboxes.
@@ -214,6 +225,8 @@ error!(FetchBodyError:
 
 error!(FetchHeadersError:
     Request ImapError: "Connection error",
+    Channel mpsc::error::SendError<()>: "Failed to send header through channel",
+    NoHeader (): "Failed to fetch email header",
 );
 
 error!(UnseenError:

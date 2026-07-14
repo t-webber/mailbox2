@@ -21,14 +21,14 @@ macro_rules! log {
 /// helper to create error enumerations.
 #[macro_export]
 macro_rules! error {
-    ($name:ident: $($variant:ident $value:ty: $txt:literal,)*) => {
+    ($name:ident $(< $x:ident >)? : $($variant:ident $value:ty: $txt:literal,)*) => {
         #[expect(missing_docs, reason="name explicit enough")]
         #[derive(Debug)]
-        pub enum $name {
+        pub enum $name$(< $x >)? {
             $($variant($value)),*
         }
 
-        impl $name {
+        impl$(< $x >)? $name$(< $x >)? {
             /// Returns a short message corresponding to the error.
             pub fn display(&self) -> &'static str {
                 match self {
