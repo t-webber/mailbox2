@@ -1,11 +1,13 @@
 extern crate alloc;
 use alloc::sync::Arc;
 
-use iced::widget::{button, column, container, text, text_input};
-use iced::{Alignment, Color, Element, Length};
+use iced::widget::{Column, container};
+use iced::{Alignment, Element, Length};
 use mailbox_shared::EmailConfig;
 
 use crate::Page;
+use crate::ui::component::{btn, input, txt};
+use crate::ui::style::{RED, TXT_FONT, YELLOW};
 
 /// Page to enter an email provider configuration.
 ///
@@ -92,47 +94,53 @@ impl Page for AddConfigPage {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let cols = column!(
-            text("New email provider").color(Color::WHITE),
-            text_input(
+        let elements: [Element<'_, Message>; 8] = [
+            txt("New email provider").size(TXT_FONT + 2).into(),
+            input(
                 "Alias for displaying it in this app",
-                &self.alias.map(|ch| ch.to_string()).unwrap_or_default()
+                &self.alias.map(|ch| ch.to_string()).unwrap_or_default(),
+                |x: String| Message::Alias(x.chars().last()),
             )
-            .on_input(|x| Message::Alias(x.chars().last())),
-            text_input("User (email)", &self.user)
-                .on_input(|x| Message::User(x.into())),
-            text_input("Password", &self.password)
-                .on_input(|x| Message::Password(x.into())),
-            text_input("Domain (e.g. imap.gmail.com)", &self.domain)
-                .on_input(|x| Message::Domain(x.into())),
-            text_input(
+            .into(),
+            input("User (email)", &self.user, Message::User).into(),
+            input("Password", &self.password, Message::Password).into(),
+            input(
+                "Domain (e.g. imap.gmail.com)",
+                &self.domain,
+                Message::Domain,
+            )
+            .into(),
+            input(
                 "Port (e.g. 993)",
                 &if self.port == 0 {
                     String::new()
                 } else {
                     self.port.to_string()
-                }
+                },
+                Message::Port,
             )
-            .on_input(|x| Message::Port(x.into())),
-            button("Submit").on_press(Message::Submit)
-        );
-        container(
+            .into(),
+            btn(txt("Submit"), Message::Submit).into(),
             if self.loading {
-                cols.push(
-                    text("Establishing connection...")
-                        .color(Color::from_rgb8(0xe5, 0xc0, 0x7b)),
-                )
+                txt("Establishing connection...").color(YELLOW)
             } else if self.error.is_empty() {
-                cols
+                txt("")
             } else {
-                cols.push(
-                    text(self.error).color(Color::from_rgb8(0xe0, 0x6c, 0x75)),
-                )
+                txt(self.error).color(RED)
             }
-            .height(Length::Fill)
-            .width(Length::Fill)
+            .into(),
+        ];
+        container(
+            Column::with_children(
+                elements
+                    .into_iter()
+                    .map(|elt| container(elt).padding(2.).into()),
+            )
             .align_x(Alignment::Center),
         )
+        .center_x(Length::Fixed(300.))
+        .center_y(Length::Fill)
+        .height(Length::Fill)
         .into()
     }
 }
