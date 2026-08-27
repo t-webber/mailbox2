@@ -16,11 +16,19 @@ use crate::imap::{
 /// Provider for email connections.
 #[derive(Debug)]
 pub struct EmailProvider {
+    /// Alias to use to name the provider.
+    alias: char,
     /// Imap session.
     session: Session<TlsStream<TcpStream>>,
 }
 
 impl EmailProvider {
+    /// Returns the alias of the config.
+    #[must_use]
+    pub const fn alias(&self) -> char {
+        self.alias
+    }
+
     /// Authenticates a configuration into a provider.
     ///
     /// # Errors
@@ -29,7 +37,7 @@ impl EmailProvider {
     pub async fn auth(
         config: &EmailConfig,
     ) -> Result<Self, ImageConnectionError> {
-        Ok(Self { session: connect_imap(config).await? })
+        Ok(Self { alias: config.alias(), session: connect_imap(config).await? })
     }
 
     /// Returns the body of an email.

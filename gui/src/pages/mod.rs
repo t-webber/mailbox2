@@ -6,13 +6,15 @@ mod main;
 extern crate alloc;
 
 use alloc::sync::Arc;
+use std::sync::Mutex;
 
 use iced::widget::container::Style;
 use iced::widget::{column, container, text};
 use iced::{Color, Element, Length, Task};
+use mailbox_email::EmailProvider;
 
 use crate::pages::add_config::{AddConfigMessage, AddConfigPage};
-use crate::pages::main::MainPage;
+use crate::pages::main::{MainMessage, MainPage};
 use crate::{GuiApp, Page};
 
 /// Application messages.
@@ -22,10 +24,14 @@ pub enum GuiAppMessage {
     AddConfig(AddConfigMessage),
     /// Authenticates the providers loaded from the configuration.
     Authenticate,
+    /// Display an error.
+    Error(&'static str),
     /// Message for the main page.
-    Main(()),
+    Main(MainMessage),
+    /// Nothing to be done.
+    None,
     /// Message for when a provider is added.
-    ProviderAdded,
+    ProviderAdded(Arc<Mutex<EmailProvider>>, Option<&'static str>),
 }
 
 /// Gui Application state.
@@ -59,6 +65,8 @@ impl Page for GuiApp {
             page.loading(false);
         }
         match message {
+            GuiAppMessage::None => (),
+            GuiAppMessage::Error(error) => self.error(error),
             GuiAppMessage::AddConfig(msg) =>
                 if let GuiAppPage::AddConfig(page) = &mut self.page
                     && let Some(email) = page.update(msg)
@@ -69,26 +77,37 @@ impl Page for GuiApp {
                     return Task::perform(
                         Self::auth(email, providers, config),
                         |res| match res {
-                            Ok(()) => GuiAppMessage::ProviderAdded,
+                            Ok(provider) =>
+                                GuiAppMessage::ProviderAdded(provider, None),
                             Err(str) => GuiAppMessage::AddConfig(
                                 AddConfigMessage::Error(str),
                             ),
                         },
                     );
                 },
-            GuiAppMessage::Main(()) => (),
-            GuiAppMessage::ProviderAdded =>
-                self.page = GuiAppPage::Main(MainPage),
+            GuiAppMessage::Main(msg) =>
+                if let GuiAppPage::Main(main) = &mut self.page {
+                    main.update(msg);
+                },
+            GuiAppMessage::ProviderAdded(current, err) => {
+                self.page = GuiAppPage::Main(MainPage::new(
+                    current,
+                    Arc::clone(&self.providers),
+                ));
+                if let Some(str) = err {
+                    self.error(str);
+                }
+            }
             GuiAppMessage::Authenticate => {
                 let config = Arc::clone(&self.config);
                 let providers = Arc::clone(&self.providers);
                 return Task::perform(
                     Self::auth_config(config, providers),
                     |res| match res {
-                        Ok(()) => GuiAppMessage::ProviderAdded,
-                        Err(str) => GuiAppMessage::AddConfig(
-                            AddConfigMessage::Error(str),
-                        ),
+                        (Some(first), err) =>
+                            GuiAppMessage::ProviderAdded(first, err),
+                        (None, Some(err)) => GuiAppMessage::Error(err),
+                        (None, None) => GuiAppMessage::None,
                     },
                 );
             }

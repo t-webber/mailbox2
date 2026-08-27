@@ -27,6 +27,12 @@ pub struct EmailConfig {
 }
 
 impl EmailConfig {
+    /// Returns the alias of the config.
+    #[must_use]
+    pub const fn alias(&self) -> char {
+        self.alias
+    }
+
     /// Creates a config from these values.
     #[must_use]
     pub const fn new(

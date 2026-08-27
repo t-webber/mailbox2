@@ -30,6 +30,11 @@ pub struct AddConfigPage {
 }
 
 impl AddConfigPage {
+    /// Displays an error message.
+    pub const fn error(&mut self, error: &'static str) {
+        self.error = error;
+    }
+
     /// Marks the UI as loading.
     pub const fn loading(&mut self, loading: bool) {
         self.loading = loading;

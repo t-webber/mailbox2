@@ -39,6 +39,9 @@ use mailbox_shared::{Config, LoadError};
 
 use crate::pages::{GuiAppMessage, GuiAppPage};
 
+/// Sharable list of providers.
+type Providers = Arc<Mutex<Vec<Arc<Mutex<EmailProvider>>>>>;
+
 /// Traits and types required for a page to be rendered and updated.
 trait Page {
     /// Messages that are sent after updating the state of the app.
@@ -61,10 +64,19 @@ pub struct GuiApp {
     /// Current page.
     page: GuiAppPage,
     /// List of providers.
-    providers: Arc<Mutex<Vec<EmailProvider>>>,
+    providers: Providers,
 }
 
 impl GuiApp {
+    /// Displays an error message.
+    const fn error(&mut self, error: &'static str) {
+        match &mut self.page {
+            GuiAppPage::AddConfig(page) => page.error(error),
+            GuiAppPage::Authenticate => (),
+            GuiAppPage::Main(page) => page.error(error),
+        }
+    }
+
     /// Loads the configuration and returns a default [`GuiAppPage`].
     fn new(config: &mut Config) -> (Self, Task<GuiAppMessage>) {
         let has_configs = config.as_first_email_config().is_some();
