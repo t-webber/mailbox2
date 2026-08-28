@@ -39,18 +39,22 @@ use mailbox_shared::{Config, LoadError};
 
 use crate::pages::{GuiAppMessage, GuiAppPage};
 
+/// Sharable provider.
+type Provider = Arc<Mutex<EmailProvider>>;
 /// Sharable list of providers.
-type Providers = Arc<Mutex<Vec<Arc<Mutex<EmailProvider>>>>>;
+type Providers = Arc<Mutex<Vec<Provider>>>;
 
 /// Traits and types required for a page to be rendered and updated.
 trait Page {
     /// Messages that are sent after updating the state of the app.
     type Message;
     /// Data passed to the parent in some circumpstances.
+    type Task;
+    /// Data passed to the children.
     type Update;
 
     /// Updates the application based on incomming messages.
-    fn update(&mut self, message: Self::Message) -> Self::Update;
+    fn update(&mut self, data: Self::Update) -> Self::Task;
 
     /// Displays the app.
     fn view(&self) -> Element<'_, Self::Message>;

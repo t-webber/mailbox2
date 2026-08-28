@@ -58,13 +58,14 @@ impl GuiAppPage {
 
 impl Page for GuiApp {
     type Message = GuiAppMessage;
-    type Update = Task<Self::Message>;
+    type Task = Task<Self::Message>;
+    type Update = Self::Message;
 
-    fn update(&mut self, message: Self::Message) -> Self::Update {
+    fn update(&mut self, data: Self::Message) -> Self::Task {
         if let GuiAppPage::AddConfig(page) = &mut self.page {
             page.loading(false);
         }
-        match message {
+        match data {
             GuiAppMessage::None => (),
             GuiAppMessage::Error(error) => self.error(error),
             GuiAppMessage::AddConfig(msg) =>
@@ -85,9 +86,11 @@ impl Page for GuiApp {
                         },
                     );
                 },
-            GuiAppMessage::Main(msg) =>
+            GuiAppMessage::Main(MainMessage::AddProvider) =>
+                self.page = GuiAppPage::AddConfig(AddConfigPage::default()),
+            GuiAppMessage::Main(MainMessage::SelectProvider(provider)) =>
                 if let GuiAppPage::Main(main) = &mut self.page {
-                    main.update(msg);
+                    main.update(provider);
                 },
             GuiAppMessage::ProviderAdded(current, err) => {
                 self.page = GuiAppPage::Main(MainPage::new(
