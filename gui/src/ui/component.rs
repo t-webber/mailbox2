@@ -46,17 +46,19 @@ pub fn btn<
 >(
     content: Content,
     msg: Msg,
+    focus: bool,
+    round: bool,
 ) -> Button<'disp, Msg> {
-    button(content).on_press(msg).style(|_, st| button::Style {
+    button(content).on_press(msg).style(move |_, st| button::Style {
         background: Some(
-            if matches!(st, button::Status::Active) {
+            if matches!(st, button::Status::Active) && !focus {
                 BTN_COLOUR
             } else {
                 FOCUSED_COLOUR
             }
             .into(),
         ),
-        border: rounded(RADIUS),
+        border: rounded(if round { RADIUS } else { 0. }),
         ..Default::default()
     })
 }

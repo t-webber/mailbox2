@@ -127,7 +127,7 @@ impl Page for AddConfigPage {
                 AddConfigMessage::Port,
             )
             .into(),
-            btn(txt("Submit"), AddConfigMessage::Submit).into(),
+            btn(txt("Submit"), AddConfigMessage::Submit, false, true).into(),
             if self.loading {
                 txt("Establishing connection...").color(YELLOW)
             } else if self.error.is_empty() {
