@@ -46,9 +46,9 @@ pub struct EmailHeader {
 impl Ord for EmailHeader {
     fn cmp(&self, other: &Self) -> Ordering {
         match (self.date, other.date) {
-            (None, _) => Ordering::Greater,
-            (_, None) => Ordering::Less,
-            (Some(this), Some(that)) => this.cmp(&that),
+            (None, _) => Ordering::Less,
+            (_, None) => Ordering::Greater,
+            (Some(this), Some(that)) => that.cmp(&this),
         }
     }
 }

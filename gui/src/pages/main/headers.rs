@@ -1,4 +1,5 @@
 extern crate alloc;
+use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use std::collections::HashSet;
 
@@ -21,7 +22,7 @@ pub struct HeadersPage {
     /// Currently opened header.
     current: Option<u32>,
     /// List of headers.
-    headers: Option<Vec<Header>>,
+    headers: Option<BTreeSet<Header>>,
     /// List of unseen emails.
     unseen: ArMx<HashSet<u32>>,
 }
@@ -90,6 +91,14 @@ impl Page for HeadersPage {
                     column!(
                         container(
                             txt(header.from())
+                                .wrapping(Wrapping::None)
+                                .color(colour)
+                        )
+                        .clip(true)
+                        .height(Length::Shrink)
+                        .width(Length::Fixed(200.)),
+                        container(
+                            txt(header.date())
                                 .wrapping(Wrapping::None)
                                 .color(colour)
                         )
