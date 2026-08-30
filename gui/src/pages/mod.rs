@@ -14,8 +14,10 @@ use iced::widget::container::Style;
 use iced::widget::operation::{focus_next, focus_previous};
 use iced::{Element, Length, Subscription, Task, keyboard};
 
-use crate::pages::add_config::{AddConfigMessage, AddConfigPage};
-use crate::pages::main::{MainMessage, MainPage, SelectProviderMsg};
+pub use crate::pages::add_config::AddConfigMessage;
+use crate::pages::add_config::AddConfigPage;
+pub use crate::pages::main::MainPage;
+use crate::pages::main::{MainMessage, SelectProviderMsg};
 use crate::ui::component::txt;
 use crate::{GuiApp, Page, Provider};
 
@@ -112,24 +114,7 @@ impl Page for GuiApp {
                     return main.boot().map(GuiAppMessage::Main);
                 }
             }
-            GuiAppMessage::AddConfig(msg) =>
-                if let GuiAppPage::AddConfig(page) = &mut self.page
-                    && let Some(email) = page.update(msg)
-                {
-                    page.loading(true);
-                    let providers = Arc::clone(&self.providers);
-                    let config = Arc::clone(&self.config);
-                    return Task::perform(
-                        Self::auth(email, providers, config),
-                        |res| match res {
-                            Ok(provider) =>
-                                GuiAppMessage::ProviderAdded(provider, None),
-                            Err(str) => GuiAppMessage::AddConfig(
-                                AddConfigMessage::Error(str),
-                            ),
-                        },
-                    );
-                },
+            GuiAppMessage::AddConfig(msg) => return self.add_config(msg),
             GuiAppMessage::Main(
                 MainMessage::Error(None) | MainMessage::Body(()),
             )
@@ -160,31 +145,9 @@ impl Page for GuiApp {
                 if let GuiAppPage::Main(main) = &mut self.page {
                     main.update(provider);
                 },
-            GuiAppMessage::ProviderAdded(current, err) => {
-                self.page = GuiAppPage::Main(MainPage::new(
-                    current,
-                    Arc::clone(&self.providers),
-                ));
-                if let Some(str) = err {
-                    self.error(str);
-                }
-                if let GuiAppPage::Main(main) = &mut self.page {
-                    return main.boot().map(GuiAppMessage::Main);
-                }
-            }
-            GuiAppMessage::Authenticate => {
-                let config = Arc::clone(&self.config);
-                let providers = Arc::clone(&self.providers);
-                return Task::perform(
-                    Self::auth_config(config, providers),
-                    |res| match res {
-                        (Some(first), err) =>
-                            GuiAppMessage::ProviderAdded(first, err),
-                        (None, Some(err)) => GuiAppMessage::Error(err),
-                        (None, None) => GuiAppMessage::None,
-                    },
-                );
-            }
+            GuiAppMessage::ProviderAdded(current, err) =>
+                return self.add_provider(current, err),
+            GuiAppMessage::Authenticate => return self.auth_and_store(),
         }
         Task::none()
     }

@@ -1,12 +1,55 @@
+use alloc::sync::Arc;
+
+use iced::Task;
 use mailbox_email::EmailProvider;
 use mailbox_shared::{ArMx, Config, EmailConfig, lock};
 use tokio::task::JoinSet;
 use tokio::time::error::Elapsed;
 use tokio::time::{Duration, timeout};
 
-use crate::{GuiApp, Provider, Providers};
+use crate::pages::{AddConfigMessage, GuiAppMessage, GuiAppPage, MainPage};
+use crate::{GuiApp, Page as _, Provider, Providers};
 
 impl GuiApp {
+    /// Adds a new provider configuration.
+    pub fn add_config(&mut self, msg: AddConfigMessage) -> Task<GuiAppMessage> {
+        if let GuiAppPage::AddConfig(page) = &mut self.page
+            && let Some(email) = page.update(msg)
+        {
+            page.loading(true);
+            let providers = Arc::clone(&self.providers);
+            let config = Arc::clone(&self.config);
+            Task::perform(Self::auth(email, providers, config), |res| match res
+            {
+                Ok(provider) => GuiAppMessage::ProviderAdded(provider, None),
+                Err(str) =>
+                    GuiAppMessage::AddConfig(AddConfigMessage::Error(str)),
+            })
+        } else {
+            Task::none()
+        }
+    }
+
+    /// Adds a new provider.
+    pub fn add_provider(
+        &mut self,
+        current: EmailProvider,
+        err: Option<&'static str>,
+    ) -> Task<GuiAppMessage> {
+        self.page = GuiAppPage::Main(MainPage::new(
+            current,
+            Arc::clone(&self.providers),
+        ));
+        if let Some(str) = err {
+            self.error(str);
+        }
+        if let GuiAppPage::Main(main) = &mut self.page {
+            main.boot().map(GuiAppMessage::Main)
+        } else {
+            Task::none()
+        }
+    }
+
     /// Authenticates with a configuration and gets a new provider.
     ///
     /// # Errors
@@ -23,6 +66,17 @@ impl GuiApp {
             .map_err(|_err| "Failed to save configuration")?;
         lock!(providers).push(provider.clone());
         Ok(provider)
+    }
+
+    /// Authenticates the client.
+    pub fn auth_and_store(&self) -> Task<GuiAppMessage> {
+        let config = Arc::clone(&self.config);
+        let providers = Arc::clone(&self.providers);
+        Task::perform(Self::auth_config(config, providers), |res| match res {
+            (Some(first), err) => GuiAppMessage::ProviderAdded(first, err),
+            (None, Some(err)) => GuiAppMessage::Error(err),
+            (None, None) => GuiAppMessage::None,
+        })
     }
 
     /// Authenticate every provider of the config.
