@@ -16,22 +16,11 @@ use utf7_imap::{decode_utf7_imap, encode_utf7_imap};
 use crate::body::EmailBody;
 use crate::header::EmailHeader;
 
-/// Provider for email connections.
-#[derive(Debug, Clone)]
-pub struct EmailProvider {
-    /// Alias to use to name the provider.
-    alias: char,
-    /// Imap session.
-    session: Arc<TokioMutex<Session<TlsStream<TcpStream>>>>,
-}
+/// Connected IMAP handle to do requests.
+#[derive(Debug)]
+struct ImapSession(Session<TlsStream<TcpStream>>);
 
-impl EmailProvider {
-    /// Returns the alias of the provider.
-    #[must_use]
-    pub const fn alias(&self) -> char {
-        self.alias
-    }
-
+impl ImapSession {
     /// Authenticates a configuration into a provider.
     ///
     /// # Errors
@@ -58,7 +47,45 @@ impl EmailProvider {
             .map_err(|(err, _unauthenticated_client)| err)
             .map_err(ImapConnectionError::Login)?;
         log!("Authenticated {}", config.alias());
-        Ok(Self { alias: config.alias(), session: Arc::new(session.into()) })
+        Ok(Self(session))
+    }
+}
+
+/// Provider for email connections.
+#[derive(Debug, Clone)]
+pub struct EmailProvider {
+    /// Alias to use to name the provider.
+    alias: char,
+    /// Imap session.
+    background_session: Arc<TokioMutex<ImapSession>>,
+    /// Foreground session to execute priority work.
+    priority_session: Arc<TokioMutex<ImapSession>>,
+}
+
+impl EmailProvider {
+    /// Returns the alias of the provider.
+    #[must_use]
+    pub const fn alias(&self) -> char {
+        self.alias
+    }
+
+    /// Authenticates a configuration into a provider.
+    ///
+    /// # Errors
+    ///
+    /// Cf. [`ImageConnectionError`].
+    pub async fn auth(
+        config: &EmailConfig,
+    ) -> Result<Self, ImapConnectionError> {
+        Ok(Self {
+            alias: config.alias(),
+            background_session: Arc::new(TokioMutex::new(
+                ImapSession::auth(config).await?,
+            )),
+            priority_session: Arc::new(TokioMutex::new(
+                ImapSession::auth(config).await?,
+            )),
+        })
     }
 
     /// Returns the body of an email.
@@ -71,8 +98,9 @@ impl EmailProvider {
         uid: u32,
     ) -> Result<EmailBody, FetchBodyError> {
         log!("Fetching body of {uid}");
-        let mut session = self.session.lock().await;
+        let mut session = self.priority_session.lock().await;
         let mut stream = session
+            .0
             .uid_fetch(uid.to_string(), "BODY.PEEK[]")
             .await
             .map_err(FetchBodyError::Request)?;
@@ -85,7 +113,7 @@ impl EmailProvider {
         }
         drop(stream);
         drop(session);
-        log!("Fetched body of {uid}");
+        log!("Body of {uid} not found");
         Err(FetchBodyError::NotFound(()))
     }
 
@@ -100,11 +128,12 @@ impl EmailProvider {
     ) -> mpsc::Receiver<Result<Arc<EmailHeader>, FetchHeadersError>> {
         log!("Fetching headers");
         let (tx, rx) = mpsc::channel(32);
-        let async_session = Arc::clone(&self.session);
+        let async_session = Arc::clone(&self.background_session);
 
         tokio::spawn(async move {
             let mut session = async_session.lock().await;
             let mut messages = match session
+                .0
                 .fetch("1:*", "(UID ENVELOPE)")
                 .await
                 .map_err(FetchHeadersError::Request)
@@ -153,10 +182,11 @@ impl EmailProvider {
         &self,
     ) -> Result<(Vec<Arc<str>>, Vec<ListBoxError>), ListBoxError> {
         log!("Fetching mailboxes");
-        let mut session = self.session.lock().await;
+        let mut session = self.background_session.lock().await;
         let mut res = vec![];
         let mut errors = vec![];
         let mut mailboxes = session
+            .0
             .list(None, Some("*"))
             .await
             .map_err(ListBoxError::Request)?;
@@ -181,9 +211,12 @@ impl EmailProvider {
     /// Cf. [`UnseenError`].
     pub async fn get_unseen(&self) -> Result<HashSet<u32>, UnseenError> {
         log!("Fetch unseen emails");
-        let mut session = self.session.lock().await;
-        let uids =
-            session.uid_search("UNSEEN").await.map_err(UnseenError::Request)?;
+        let mut session = self.background_session.lock().await;
+        let uids = session
+            .0
+            .uid_search("UNSEEN")
+            .await
+            .map_err(UnseenError::Request)?;
         drop(session);
         log!("Fetch {} unseen emails", uids.len());
         Ok(uids)
@@ -198,10 +231,19 @@ impl EmailProvider {
         &self,
         name: String,
     ) -> Result<(), SelectBoxError> {
-        self.session
+        let encoded_name = encode_utf7_imap(name);
+        self.priority_session
             .lock()
             .await
-            .select(encode_utf7_imap(name))
+            .0
+            .select(&encoded_name)
+            .await
+            .map_err(SelectBoxError::Request)?;
+        self.background_session
+            .lock()
+            .await
+            .0
+            .select(&encoded_name)
             .await
             .map_err(SelectBoxError::Request)?;
         Ok(())
