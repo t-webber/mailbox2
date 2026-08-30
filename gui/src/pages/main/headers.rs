@@ -1,4 +1,4 @@
-extern crate alloc;
+
 use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use std::collections::HashSet;

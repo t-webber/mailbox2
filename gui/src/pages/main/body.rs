@@ -1,4 +1,4 @@
-extern crate alloc;
+
 use alloc::sync::Arc;
 
 use iced::widget::text::{Rich, Span};

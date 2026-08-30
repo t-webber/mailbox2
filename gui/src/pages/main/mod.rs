@@ -7,7 +7,7 @@ mod select_box;
 /// Left bar to select the active provider.
 mod select_provider;
 
-extern crate alloc;
+
 use alloc::sync::Arc;
 use core::mem::take;
 use std::collections::HashSet;

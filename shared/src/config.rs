@@ -1,4 +1,4 @@
-extern crate alloc;
+
 use alloc::sync::Arc;
 use std::collections::HashSet;
 use std::fs::{self, read, write};

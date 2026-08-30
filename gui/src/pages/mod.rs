@@ -3,7 +3,7 @@ mod add_config;
 /// Page provider page after authentication.
 mod main;
 
-extern crate alloc;
+
 
 use alloc::sync::Arc;
 

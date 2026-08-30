@@ -16,6 +16,7 @@ mod subject_decoder;
 #[cfg(test)]
 mod test_subject_decoder;
 
+extern crate alloc;
 pub use body::EmailBody;
 pub use header::EmailHeader;
 pub use provider::{
