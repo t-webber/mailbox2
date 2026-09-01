@@ -1,4 +1,3 @@
-
 use alloc::sync::Arc;
 
 use iced::widget::{Column, container, row};
@@ -128,8 +127,12 @@ impl Page for AddConfigPage {
             )
             .into(),
             input("User (email)", &self.user, AddConfigMessage::User).into(),
-            input("Password", &self.password, AddConfigMessage::Password)
-                .into(),
+            input(
+                "Password",
+                &"*".repeat(self.password.len()),
+                AddConfigMessage::Password,
+            )
+            .into(),
             input(
                 "Domain (e.g. imap.gmail.com)",
                 &self.domain,
