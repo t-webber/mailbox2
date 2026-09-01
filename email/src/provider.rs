@@ -1,4 +1,3 @@
-
 use alloc::sync::Arc;
 use std::collections::HashSet;
 use std::io;
@@ -25,7 +24,7 @@ impl ImapSession {
     ///
     /// # Errors
     ///
-    /// Cf. [`ImageConnectionError`].
+    /// Cf. [`ImapConnectionError`].
     pub async fn auth(
         config: &EmailConfig,
     ) -> Result<Self, ImapConnectionError> {
@@ -73,7 +72,7 @@ impl EmailProvider {
     ///
     /// # Errors
     ///
-    /// Cf. [`ImageConnectionError`].
+    /// Cf. [`ImapConnectionError`].
     pub async fn auth(
         config: &EmailConfig,
     ) -> Result<Self, ImapConnectionError> {

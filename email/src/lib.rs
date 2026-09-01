@@ -20,5 +20,5 @@ extern crate alloc;
 pub use body::EmailBody;
 pub use header::EmailHeader;
 pub use provider::{
-    EmailProvider, FetchBodyError, FetchHeadersError, ImapConnectionError, ListBoxError, SelectBoxError
+    EmailProvider, FetchBodyError, FetchHeadersError, ImapConnectionError, ListBoxError, SelectBoxError, UnseenError
 };
