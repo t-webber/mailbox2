@@ -93,7 +93,8 @@ impl Page for AddConfigPage {
                         ""
                     );
                 },
-            AddConfigMessage::Submit =>
+            AddConfigMessage::Submit => {
+                self.error = errmsg!("", "");
                 if self.alias.is_none() {
                     self.error = errmsg!("Missing alias", "");
                 } else if self.user.is_empty() {
@@ -106,7 +107,8 @@ impl Page for AddConfigPage {
                     self.error = errmsg!("Missing port", "");
                 } else {
                     return Some(self.to_cfg());
-                },
+                }
+            }
             AddConfigMessage::Error(error) => self.error = error,
             AddConfigMessage::Cancel(_) => (),
         }
