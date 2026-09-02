@@ -11,3 +11,6 @@ tokio.workspace = true
 
 [lints]
 workspace = true
+
+[features]
+debug = ["mailbox-email/debug", "mailbox-gui/debug", "mailbox-shared/debug"]

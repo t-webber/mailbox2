@@ -13,3 +13,6 @@ open.workspace = true
 
 [lints]
 workspace = true
+
+[features]
+debug = []

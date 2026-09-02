@@ -14,7 +14,8 @@ pub use tokio::sync::Mutex as TokioMutex;
 #[macro_export]
 macro_rules! log {
     ($($arg:expr),*) => {{
-        //         eprintln!($($arg),*)
+        #[cfg(feature = "debug")]
+        eprintln!($($arg),*)
     }};
 }
 
