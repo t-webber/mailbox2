@@ -7,7 +7,6 @@ mod select_box;
 /// Left bar to select the active provider.
 mod select_provider;
 
-
 use alloc::sync::Arc;
 use core::mem::take;
 use std::collections::HashSet;
@@ -17,7 +16,7 @@ use iced::stream::channel;
 use iced::widget::{column, container, row};
 use iced::{Alignment, Length, Task};
 use mailbox_email::{EmailBody, EmailHeader, FetchHeadersError, ListBoxError};
-use mailbox_shared::{ArMx, lock};
+use mailbox_shared::{ArMx, ErrStr, lock};
 
 pub use crate::pages::main::body::BodyMsg;
 use crate::pages::main::body::BodyPage;
@@ -34,7 +33,7 @@ pub struct MainPage {
     /// Body to display.
     body: BodyPage,
     /// Error to display.
-    error: Option<&'static str>,
+    error: Option<ErrStr>,
     /// List of headers.
     headers: HeadersPage,
     /// Whether the app is ready to show data or not.
@@ -73,7 +72,7 @@ impl MainPage {
     }
 
     /// Displays an error message.
-    pub const fn error(&mut self, error: &'static str) {
+    pub fn error(&mut self, error: ErrStr) {
         self.error = Some(error);
     }
 
@@ -84,7 +83,7 @@ impl MainPage {
         uid: u32,
         body: ArMx<Option<EmailBody>>,
         provider: Provider,
-    ) -> Option<&'static str> {
+    ) -> Option<ErrStr> {
         match provider.get_body(uid).await {
             Ok(new_body) => {
                 *lock!(body) = Some(new_body);
@@ -100,7 +99,7 @@ impl MainPage {
     async fn fetch_boxes(
         boxes: Mailboxes,
         provider: Provider,
-    ) -> Option<&'static str> {
+    ) -> Option<ErrStr> {
         match provider.get_mailboxes().await {
             Ok((list, errors)) => {
                 *lock!(boxes) = list;
@@ -134,7 +133,7 @@ impl MainPage {
     async fn fetch_unseen(
         unseen: ArMx<HashSet<u32>>,
         provider: Provider,
-    ) -> Option<&'static str> {
+    ) -> Option<ErrStr> {
         match provider.get_unseen().await {
             Ok(new) => {
                 *lock!(unseen) = new;
@@ -162,7 +161,7 @@ impl MainPage {
     }
 
     /// Fetches the body for that header and displays it.
-    pub fn open_header(&mut self, uid: u32) -> Task<Option<&'static str>> {
+    pub fn open_header(&mut self, uid: u32) -> Task<Option<ErrStr>> {
         self.headers.set_current(uid);
         let body = self.body.loading();
         let provider = self.provider_selector.current();
@@ -173,10 +172,7 @@ impl MainPage {
     ///
     /// This also fetches the list of headers and unseen messages once the
     /// mailbox is selected.
-    async fn select_box(
-        provider: Provider,
-        name: Arc<str>,
-    ) -> Option<&'static str> {
+    async fn select_box(provider: Provider, name: Arc<str>) -> Option<ErrStr> {
         provider
             .select_mailbox(name.to_string())
             .await
@@ -263,13 +259,13 @@ pub enum MainMessage {
     /// Message from the email body pane.
     Body(BodyMsg),
     /// Maybe an error occurred.
-    Error(Option<&'static str>),
+    Error(Option<ErrStr>),
     /// Message from the header list.
     Headers(HeadersMsg),
     /// Receive some other headers from the fetcher.
     LoadHeaders(Arc<[Result<Arc<EmailHeader>, FetchHeadersError>]>),
     /// The headers finished loading.
-    Loaded(Option<&'static str>),
+    Loaded(Option<ErrStr>),
     /// Select a mailbox.
     SelectMailbox(Arc<str>),
     /// Message from the provider selector.

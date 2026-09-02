@@ -3,8 +3,6 @@ mod add_config;
 /// Page provider page after authentication.
 mod main;
 
-
-
 use alloc::sync::Arc;
 
 use iced::keyboard::Modifiers;
@@ -13,6 +11,7 @@ use iced::widget::container;
 use iced::widget::container::Style;
 use iced::widget::operation::{focus_next, focus_previous};
 use iced::{Element, Length, Subscription, Task, keyboard};
+use mailbox_shared::ErrStr;
 
 pub use crate::pages::add_config::AddConfigMessage;
 use crate::pages::add_config::AddConfigPage;
@@ -29,7 +28,7 @@ pub enum GuiAppMessage {
     /// Authenticates the providers loaded from the configuration.
     Authenticate,
     /// Display an error.
-    Error(&'static str),
+    Error(ErrStr),
     /// Tab.
     FocusNext,
     /// Shift tab.
@@ -39,7 +38,7 @@ pub enum GuiAppMessage {
     /// Nothing to be done.
     None,
     /// Message for when a provider is added.
-    ProviderAdded(Provider, Option<&'static str>),
+    ProviderAdded(Provider, Option<ErrStr>),
 }
 
 /// Gui Application state.

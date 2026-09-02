@@ -15,6 +15,3 @@ utf7-imap = "0.3.2"
 
 [lints]
 workspace = true
-
-[features]
-debug = []

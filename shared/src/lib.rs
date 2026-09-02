@@ -1,5 +1,8 @@
 //! Shared traits and functions accross the mailbox applications.
 
+#![allow(unused_features, reason = "bug")]
+#![feature(stmt_expr_attributes)]
+
 /// Loads and edits config.
 mod config;
 
@@ -14,8 +17,20 @@ pub use tokio::sync::Mutex as TokioMutex;
 #[macro_export]
 macro_rules! log {
     ($($arg:expr),*) => {{
-        #[cfg(feature = "debug")]
+        #[cfg(debug_assertions)]
         eprintln!($($arg),*)
+    }};
+}
+
+/// helper to create error messages of the right type.
+#[macro_export]
+macro_rules! errmsg {
+    ($str:expr, $details:expr) => {{
+        #[cfg(debug_assertions)]
+        let msg = format!("{}: {}", $str, $details);
+        #[cfg(not(debug_assertions))]
+        let msg = $str;
+        msg
     }};
 }
 
@@ -31,9 +46,14 @@ macro_rules! error {
 
         impl$(< $x >)? $name$(< $x >)? {
             /// Returns a short message corresponding to the error.
-            pub fn display(&self) -> &'static str {
+            pub fn display(&self) -> $crate::ErrStr {
                 match self {
-                    $(Self::$variant(_) => $txt,)*
+                    $(
+                        #[cfg(debug_assertions)]
+                        Self::$variant(msg) => format!("{}: {msg:?}", $txt),
+                        #[cfg(not(debug_assertions))]
+                        Self::$variant(_) => $txt,
+                    )*
                 }
             }
         }
@@ -48,8 +68,27 @@ macro_rules! lock {
     };
 }
 
+/// helper to create error enumerations.
+#[macro_export]
+macro_rules! display_err {
+    ($msg:expr) => {{
+        #[cfg(debug_assertions)]
+        let msg = &$msg;
+        #[cfg(not(debug_assertions))]
+        let msg = $msg;
+        msg
+    }};
+}
+
 /// Arc mutex shorthand.
 pub type ArMx<T> = Arc<StdMutex<T>>;
 
 /// Async arc mutex shorthand.
 pub type TokioArMx<T> = Arc<TokioMutex<T>>;
+
+/// ,Type that contains the message to be displayed for this error.
+#[cfg(debug_assertions)]
+pub type ErrStr = String;
+/// ,Type that contains the message to be displayed for this error.
+#[cfg(not(debug_assertions))]
+pub type ErrStr = &'static str;

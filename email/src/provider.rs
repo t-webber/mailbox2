@@ -139,6 +139,10 @@ impl EmailProvider {
             {
                 Ok(messages) => messages,
                 Err(res) => {
+                    #[expect(
+                        clippy::used_underscore_binding,
+                        reason = "used in debug"
+                    )]
                     if let Err(_err) = tx.send(Err(res)).await {
                         log!("Fetching headers bailed: {_err}");
                     }
@@ -147,6 +151,10 @@ impl EmailProvider {
             };
 
             while let Some(res) = messages.next().await {
+                #[expect(
+                    clippy::used_underscore_binding,
+                    reason = "used in debug"
+                )]
                 if let Err(_err) = tx
                     .send(match res {
                         Ok(msg) =>

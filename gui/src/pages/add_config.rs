@@ -2,7 +2,7 @@ use alloc::sync::Arc;
 
 use iced::widget::{Column, container, row};
 use iced::{Alignment, Element, Length};
-use mailbox_shared::EmailConfig;
+use mailbox_shared::{EmailConfig, ErrStr, display_err, errmsg};
 
 use crate::ui::component::{btn, input, txt};
 use crate::ui::style::{
@@ -23,7 +23,7 @@ use crate::{Page, Provider};
 pub struct AddConfigPage {
     alias: Option<char>,
     domain: Arc<str>,
-    error: &'static str,
+    error: ErrStr,
     loading: bool,
     password: Arc<str>,
     port: u16,
@@ -33,7 +33,7 @@ pub struct AddConfigPage {
 
 impl AddConfigPage {
     /// Displays an error message.
-    pub const fn error(&mut self, error: &'static str) {
+    pub fn error(&mut self, error: ErrStr) {
         self.error = error;
     }
 
@@ -72,7 +72,10 @@ impl Page for AddConfigPage {
         match data {
             AddConfigMessage::Alias(ch) => {
                 if self.alias.is_some() && ch.is_some() {
-                    self.error = "Alias can't contain more than 1 character";
+                    self.error = errmsg!(
+                        "Alias can't contain more than 1 character",
+                        ""
+                    );
                 }
                 self.alias = ch;
             }
@@ -85,20 +88,22 @@ impl Page for AddConfigPage {
                 } else if let Ok(nb) = port.parse() {
                     self.port = nb;
                 } else {
-                    self.error =
-                        "Port must be a valid unsigned 16-bits integer";
+                    self.error = errmsg!(
+                        "Port must be a valid unsigned 16-bits integer",
+                        ""
+                    );
                 },
             AddConfigMessage::Submit =>
                 if self.alias.is_none() {
-                    self.error = "Missing alias";
+                    self.error = errmsg!("Missing alias", "");
                 } else if self.user.is_empty() {
-                    self.error = "Missing user";
+                    self.error = errmsg!("Missing user", "");
                 } else if self.password.is_empty() {
-                    self.error = "Missing password";
+                    self.error = errmsg!("Missing password", "");
                 } else if self.domain.is_empty() {
-                    self.error = "Missing domain";
+                    self.error = errmsg!("Missing domain", "");
                 } else if self.port == 0 {
-                    self.error = "Missing port";
+                    self.error = errmsg!("Missing port", "");
                 } else {
                     return Some(self.to_cfg());
                 },
@@ -172,7 +177,7 @@ impl Page for AddConfigPage {
             } else if self.error.is_empty() {
                 txt("")
             } else {
-                txt(self.error).color(RED)
+                txt(display_err!(self.error)).color(RED)
             }
             .into(),
         ];
@@ -203,7 +208,7 @@ pub enum AddConfigMessage {
     Alias(Option<char>),
     Cancel(Provider),
     Domain(Arc<str>),
-    Error(&'static str),
+    Error(ErrStr),
     Password(Arc<str>),
     Port(Arc<str>),
     Submit,

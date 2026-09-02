@@ -35,7 +35,7 @@ use std::sync::Mutex;
 
 use iced::{Element, Subscription, Task};
 use mailbox_email::EmailProvider;
-use mailbox_shared::{ArMx, Config, LoadError, lock};
+use mailbox_shared::{ArMx, Config, ErrStr, LoadError, lock};
 
 use crate::pages::{GuiAppMessage, GuiAppPage};
 
@@ -78,7 +78,7 @@ pub struct GuiApp {
 
 impl GuiApp {
     /// Displays an error message.
-    const fn error(&mut self, error: &'static str) {
+    fn error(&mut self, error: ErrStr) {
         match &mut self.page {
             GuiAppPage::AddConfig(page) => page.error(error),
             GuiAppPage::Authenticate => (),

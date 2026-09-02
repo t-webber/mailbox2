@@ -2,7 +2,7 @@ use alloc::sync::Arc;
 
 use iced::Task;
 use mailbox_email::EmailProvider;
-use mailbox_shared::{ArMx, Config, EmailConfig, lock};
+use mailbox_shared::{ArMx, Config, EmailConfig, ErrStr, errmsg, lock};
 use tokio::task::JoinSet;
 use tokio::time::error::Elapsed;
 use tokio::time::{Duration, timeout};
@@ -34,7 +34,7 @@ impl GuiApp {
     pub fn add_provider(
         &mut self,
         current: EmailProvider,
-        err: Option<&'static str>,
+        err: Option<ErrStr>,
     ) -> Task<GuiAppMessage> {
         self.page = GuiAppPage::Main(MainPage::new(
             current,
@@ -59,7 +59,7 @@ impl GuiApp {
         email: EmailConfig,
         providers: Providers,
         config: ArMx<Config>,
-    ) -> Result<Provider, &'static str> {
+    ) -> Result<Provider, ErrStr> {
         let provider = Self::auth_one(&email).await?;
         lock!(config)
             .add_email_config(email)
@@ -88,7 +88,7 @@ impl GuiApp {
     pub async fn auth_config(
         config: ArMx<Config>,
         providers: Providers,
-    ) -> (Option<Provider>, Option<&'static str>) {
+    ) -> (Option<Provider>, Option<ErrStr>) {
         let mut set = {
             let mut set = JoinSet::new();
             for email in lock!(config).as_email_cfgs() {
@@ -99,23 +99,26 @@ impl GuiApp {
         };
         let mut res = None;
         while let Some(next) = set.join_next().await {
+            #[expect(clippy::used_underscore_binding, reason = "used in debug")]
             match next {
                 Ok(Ok(ok)) => lock!(providers).push(ok),
                 Ok(Err(err)) => res = Some(err),
-                Err(_) => res = Some("Failed to synchronise state"),
+                Err(_msg) =>
+                    res = Some(errmsg!("Failed to synchronise state", _msg)),
             }
         }
         (lock!(providers).first().cloned(), res)
     }
 
     /// Authenticate one provider with the given config.
-    async fn auth_one(
-        email: &EmailConfig,
-    ) -> Result<EmailProvider, &'static str> {
+    async fn auth_one(email: &EmailConfig) -> Result<EmailProvider, ErrStr> {
+        #[expect(clippy::used_underscore_binding, reason = "used in debug")]
         timeout(Duration::from_mins(1), async {
             EmailProvider::auth(email).await.map_err(|err| err.display())
         })
         .await
-        .unwrap_or_else(|_: Elapsed| Err("Failed to connect: timed out"))
+        .unwrap_or_else(|_msg: Elapsed| {
+            Err(errmsg!("Failed to connect: timed out", _msg))
+        })
     }
 }
