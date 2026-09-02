@@ -30,16 +30,20 @@ impl ImapSession {
     ) -> Result<Self, ImapConnectionError> {
         log!("Authenticating {}", config.alias());
         let (user, password, domain, port) = config.values();
+        log!("> tcp connect");
         let tcp = TcpStream::connect((domain, port))
             .await
             .map_err(ImapConnectionError::UnreachableDomain)?;
+        log!("> tls build");
         let tls = native_tls::TlsConnector::builder()
             .build()
             .map_err(ImapConnectionError::TlsError)?;
+        log!("> tls connect");
         let tls_stream = tokio_native_tls::TlsConnector::from(tls)
             .connect(domain, tcp)
             .await
             .map_err(ImapConnectionError::UnreachableDomainThrougnTls)?;
+        log!("> client connect");
         let session = Client::new(tls_stream)
             .login(user, password)
             .await
