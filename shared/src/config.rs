@@ -1,4 +1,3 @@
-
 use alloc::sync::Arc;
 use std::collections::HashSet;
 use std::fs::{self, read, write};
@@ -102,7 +101,7 @@ impl Config {
 
     /// Returns the path to the configuration file.
     fn path() -> PathBuf {
-        data_dir().unwrap_or_default().join(".mailbox")
+        data_dir().unwrap_or_default().join(".mailbox").join("passwords")
     }
 
     /// Saves the config.
