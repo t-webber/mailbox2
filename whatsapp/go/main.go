@@ -63,7 +63,19 @@ func wa_init_client() *C.char {
 	}
 
 	client = whatsmeow.NewClient(deviceStore, waLog.Stdout("Client", "DEBUG", true))
+	client.AddEventHandler(logPairingStatus)
 	return nil
+}
+
+func logPairingStatus(evt interface{}) {
+	switch v := evt.(type) {
+	case *events.PairSuccess:
+		fmt.Println("Paired! JID:", v.ID)
+	case *events.Connected:
+		fmt.Println("Connected and logged in")
+	case *events.LoggedOut:
+		fmt.Println("Logged out:", v.Reason)
+	}
 }
 
 //export wa_pair_phone
@@ -76,17 +88,6 @@ func wa_pair_phone(phone *C.char) *C.char {
 			return C.CString(fmt.Sprintf("connect_error:%s", err.Error()))
 		}
 	}
-
-	client.AddEventHandler(func(evt interface{}) {
-		switch v := evt.(type) {
-		case *events.PairSuccess:
-			fmt.Println("Paired! JID:", v.ID)
-		case *events.Connected:
-			fmt.Println("Connected and logged in")
-		case *events.LoggedOut:
-			fmt.Println("Logged out:", v.Reason)
-		}
-	})
 
 	code, err := client.PairPhone(
 		context.Background(),
