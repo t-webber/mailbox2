@@ -72,6 +72,13 @@ impl MainPage {
     }
 
     /// Displays an error message.
+    #[cfg_attr(
+        not(debug_assertions),
+        expect(
+            clippy::missing_const_for_fn,
+            reason = "can't be in debug+inferred by compiler"
+        )
+    )]
     pub fn error(&mut self, error: ErrStr) {
         self.error = Some(error);
     }

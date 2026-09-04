@@ -99,7 +99,13 @@ impl GuiApp {
         };
         let mut res = None;
         while let Some(next) = set.join_next().await {
-            #[expect(clippy::used_underscore_binding, reason = "used in debug")]
+            #[cfg_attr(
+                debug_assertions,
+                expect(
+                    clippy::used_underscore_binding,
+                    reason = "used in debug"
+                )
+            )]
             match next {
                 Ok(Ok(ok)) => lock!(providers).push(ok),
                 Ok(Err(err)) => res = Some(err),
@@ -111,8 +117,11 @@ impl GuiApp {
     }
 
     /// Authenticate one provider with the given config.
+    #[cfg_attr(
+        debug_assertions,
+        expect(clippy::used_underscore_binding, reason = "used in debug")
+    )]
     async fn auth_one(email: &EmailConfig) -> Result<EmailProvider, ErrStr> {
-        #[expect(clippy::used_underscore_binding, reason = "used in debug")]
         timeout(Duration::from_mins(1), async {
             EmailProvider::auth(email).await.map_err(|err| err.display())
         })
