@@ -1,7 +1,7 @@
 use alloc::sync::Arc;
 
 use iced::widget::{Column, container, row};
-use iced::{Alignment, Element, Length};
+use iced::{Alignment, Element, Length, Pixels};
 use mailbox_shared::{EmailConfig, ErrStr, display_err, errmsg};
 
 use crate::ui::component::{btn, input, txt};
@@ -28,6 +28,7 @@ pub struct AddConfigPage {
     password: Arc<str>,
     port: u16,
     previous: Option<Provider>,
+    show_password: bool,
     user: Arc<str>,
 }
 
@@ -70,6 +71,8 @@ impl Page for AddConfigPage {
             return None;
         }
         match data {
+            AddConfigMessage::ShowPassword =>
+                self.show_password = !self.show_password,
             AddConfigMessage::Alias(ch) => {
                 if self.alias.is_some() && ch.is_some() {
                     self.error = errmsg!(
@@ -131,19 +134,35 @@ impl Page for AddConfigPage {
                 "Alias for displaying it in this app",
                 &self.alias.map(|ch| ch.to_string()).unwrap_or_default(),
                 |x: String| AddConfigMessage::Alias(x.chars().last()),
+                false,
             )
             .into(),
-            input("User (email)", &self.user, AddConfigMessage::User).into(),
-            input(
-                "Password",
-                &"*".repeat(self.password.len()),
-                AddConfigMessage::Password,
-            )
+            input("User (email)", &self.user, AddConfigMessage::User, false)
+                .into(),
+            row![
+                input(
+                    "Password",
+                    &self.password,
+                    AddConfigMessage::Password,
+                    !self.show_password,
+                ),
+                btn(
+                    txt("\u{f0208}"),
+                    AddConfigMessage::ShowPassword,
+                    false,
+                    true,
+                    BTN_COLOUR,
+                    FOCUSED_COLOUR,
+                    FOCUSED_COLOUR
+                )
+            ]
+            .spacing(Pixels(2.))
             .into(),
             input(
                 "Domain (e.g. imap.gmail.com)",
                 &self.domain,
                 AddConfigMessage::Domain,
+                false,
             )
             .into(),
             input(
@@ -154,6 +173,7 @@ impl Page for AddConfigPage {
                     self.port.to_string()
                 },
                 AddConfigMessage::Port,
+                false,
             )
             .into(),
             if let Some(prev) = &self.previous {
@@ -213,6 +233,7 @@ pub enum AddConfigMessage {
     Error(ErrStr),
     Password(Arc<str>),
     Port(Arc<str>),
+    ShowPassword,
     Submit,
     User(Arc<str>),
 }

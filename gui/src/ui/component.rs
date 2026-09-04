@@ -20,9 +20,11 @@ pub fn input<
     placeholder: &str,
     value: &str,
     on_input: OnInput,
+    secure: bool,
 ) -> TextInput<'msg, Msg> {
     use text_input::Status as St;
     text_input(placeholder, value)
+        .secure(secure)
         .on_input(move |new| on_input(new.into()))
         .font(Font::MONOSPACE)
         .size(TXT_FONT)
