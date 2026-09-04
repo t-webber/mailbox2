@@ -7,31 +7,26 @@
 
 #![allow(clippy::restriction)]
 
+use core::time::Duration;
 use std::io::{self, Write};
+use std::thread::sleep;
 
-use mailbox_whatsapp as wa;
+use mailbox_whatsapp::ffi::{initialise_client, needs_pairing, pair_phone};
 
 fn main() {
-    eprint!("Enter your phone number (with country code, no +): ");
-    io::stderr().flush().unwrap();
-    let mut phone_buf = String::new();
-    io::stdin().read_line(&mut phone_buf).expect("failed to read line");
-    let phone = phone_buf.trim().to_owned();
+    eprintln!("Connecting client...");
+    initialise_client().unwrap();
+    eprintln!("Checking for existing device...");
+    if needs_pairing() {
+        eprint!("Enter phone number (w/ contry code, no +, no 0): ");
+        io::stderr().flush().unwrap();
+        let mut phone_buf = String::new();
+        io::stdin().read_line(&mut phone_buf).expect("failed to read line");
 
-    match wa::pair_phone(&phone) {
-        Ok(code) => {
-            eprintln!();
-            eprintln!("Enter this code on your phone:");
-            eprintln!();
-            eprintln!("  {code}");
-            eprintln!();
-            eprintln!(
-                "(WhatsApp > Linked Devices > Link a Device > Link with Phone \
-                 Number)"
-            );
-        }
-        Err(err) => {
-            eprintln!("pair_phone error: {err}");
-        }
+        pair_phone(&phone_buf).unwrap();
+    } else {
+        eprintln!("Already paired!");
     }
+
+    sleep(Duration::from_secs(10000));
 }
