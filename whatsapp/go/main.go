@@ -23,11 +23,20 @@ var (
 	client        *whatsmeow.Client
 	clientMu      sync.Mutex
 	needs_pairing bool
+	syncDone      bool
+	syncMu        sync.Mutex
 )
 
 //export wa_needs_pairing
 func wa_needs_pairing() bool {
 	return needs_pairing
+}
+
+//export wa_is_synced
+func wa_is_synced() bool {
+	syncMu.Lock()
+	defer syncMu.Unlock()
+	return syncDone
 }
 
 //export wa_init_client
@@ -64,6 +73,11 @@ func wa_init_client() *C.char {
 
 	client = whatsmeow.NewClient(deviceStore, waLog.Stdout("Client", "DEBUG", true))
 	client.AddEventHandler(logPairingStatus)
+	if !needs_pairing {
+		if err := client.Connect(); err != nil {
+			return C.CString(fmt.Sprintf("connect_error:%s", err.Error()))
+		}
+	}
 	return nil
 }
 
@@ -75,6 +89,13 @@ func logPairingStatus(evt interface{}) {
 		fmt.Println("Connected and logged in")
 	case *events.LoggedOut:
 		fmt.Println("Logged out:", v.Reason)
+	case *events.OfflineSyncCompleted:
+		syncMu.Lock()
+		syncDone = true
+		syncMu.Unlock()
+		fmt.Println("Offline sync completed:", v.Count, "events")
+	case *events.HistorySync:
+		fmt.Println("History sync received")
 	}
 }
 

@@ -6,6 +6,7 @@ unsafe extern "C" {
     fn wa_pair_phone(phone: *const c_char) -> *mut c_char;
     fn wa_needs_pairing() -> bool;
     fn wa_init_client() -> *mut c_char;
+    fn wa_is_synced() -> bool;
 }
 
 /// Gets a pairing code from a phone number.
@@ -43,4 +44,11 @@ pub fn initialise_client() -> Result<(), String> {
         // SAFETY: checked for null
         Err(unsafe { CStr::from_ptr(err) }.to_string_lossy().to_string())
     }
+}
+
+/// Returns whether the initial sync has completed.
+#[must_use]
+pub fn is_synced() -> bool {
+    // SAFETY: FFI.
+    unsafe { wa_is_synced() }
 }

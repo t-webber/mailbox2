@@ -11,22 +11,37 @@ use core::time::Duration;
 use std::io::{self, Write};
 use std::thread::sleep;
 
-use mailbox_whatsapp::ffi::{initialise_client, needs_pairing, pair_phone};
+use mailbox_whatsapp::ffi::{
+    initialise_client, is_synced, needs_pairing, pair_phone
+};
+
+macro_rules! print {
+    ($x:expr) => {
+        eprintln!("\x1b[35m>>>>> {}\x1b[0m", $x)
+    };
+}
 
 fn main() {
-    eprintln!("Connecting client...");
+    print!("Connecting client...");
     initialise_client().unwrap();
-    eprintln!("Checking for existing device...");
+    print!("Checking for existing device...");
     if needs_pairing() {
-        eprint!("Enter phone number (w/ contry code, no +, no 0): ");
+        print!("Enter phone number (w/ contry code, no +, no 0): ");
         io::stderr().flush().unwrap();
         let mut phone_buf = String::new();
         io::stdin().read_line(&mut phone_buf).expect("failed to read line");
 
-        pair_phone(&phone_buf).unwrap();
+        print!("Pairing code");
+        print!(pair_phone(&phone_buf).unwrap());
     } else {
-        eprintln!("Already paired!");
+        print!("Already paired!");
     }
+
+    print!("Waiting for sync...");
+    while !is_synced() {
+        sleep(Duration::from_secs(1));
+    }
+    print!("Sync complete!");
 
     sleep(Duration::from_secs(10000));
 }
