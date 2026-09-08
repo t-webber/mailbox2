@@ -17,8 +17,7 @@ pub use tokio::sync::Mutex as TokioMutex;
 #[macro_export]
 macro_rules! log {
     ($($arg:expr),*) => {{
-        #[cfg(debug_assertions)]
-        eprintln!($($arg),*)
+        eprintln!("\x1b[38;2;10;132;255m{}\x1b[0m", format!($($arg),*))
     }};
 }
 

@@ -143,29 +143,15 @@ impl EmailProvider {
             {
                 Ok(messages) => messages,
                 Err(res) => {
-                    #[cfg_attr(
-                        debug_assertions,
-                        expect(
-                            clippy::used_underscore_binding,
-                            reason = "used in debug"
-                        )
-                    )]
-                    if let Err(_err) = tx.send(Err(res)).await {
-                        log!("Fetching headers bailed: {_err}");
+                    if let Err(err) = tx.send(Err(res)).await {
+                        log!("Fetching headers bailed: {err}");
                     }
                     return;
                 }
             };
 
             while let Some(res) = messages.next().await {
-                #[cfg_attr(
-                    debug_assertions,
-                    expect(
-                        clippy::used_underscore_binding,
-                        reason = "used in debug"
-                    )
-                )]
-                if let Err(_err) = tx
+                if let Err(err) = tx
                     .send(match res {
                         Ok(msg) =>
                             if let Some(envelope) = msg.envelope() {
@@ -180,7 +166,7 @@ impl EmailProvider {
                     })
                     .await
                 {
-                    log!("Fetching headers bailed: {_err}");
+                    log!("Fetching headers bailed: {err}");
                 }
             }
             drop(messages);
