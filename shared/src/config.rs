@@ -56,6 +56,8 @@ impl EmailConfig {
 pub struct Config {
     /// List of email providers.
     emails: HashSet<EmailConfig>,
+    /// `WhatsApp` display alias.
+    whatsapp_alias: Option<char>,
 }
 
 impl Config {
@@ -119,6 +121,22 @@ impl Config {
             postcard::to_allocvec(self).map_err(SaveError::InvalidData)?,
         )
         .map_err(SaveError::WriteFailure)
+    }
+
+    /// Sets the `WhatsApp` alias and saves the config.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if it fails to save the configuration.
+    pub fn set_whatsapp_alias(&mut self, alias: char) -> Result<(), SaveError> {
+        self.whatsapp_alias = Some(alias);
+        self.save()
+    }
+
+    /// Returns the `WhatsApp` alias, if configured.
+    #[must_use]
+    pub const fn whatsapp_alias(&self) -> Option<char> {
+        self.whatsapp_alias
     }
 }
 
