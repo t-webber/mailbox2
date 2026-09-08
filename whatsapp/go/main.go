@@ -14,6 +14,7 @@ import (
 
 	"github.com/adrg/xdg"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/rs/zerolog"
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
@@ -30,12 +31,14 @@ var (
 )
 
 func log(parts ...string) {
-	fmt.Println("\x1b[34m", parts, "\x1b[0m")
+	fmt.Printf("\x1b[38;2;37;211;102mwhatsapp: %s\x1b[0m\n", strings.Join(parts, " "))
 }
 
 func cstr(parts ...string) *C.char {
 	return C.CString(fmt.Sprintf("%s", strings.Join(parts, " ")))
 }
+
+var DATA_DIR = xdg.DataHome + "/.mailbox/"
 
 //export wa_needs_pairing
 func wa_needs_pairing() bool {
@@ -55,7 +58,7 @@ func wa_init_client() *C.char {
 		return nil
 	}
 
-	db_path := xdg.DataHome + "/.mailbox/wa.db"
+	db_path := DATA_DIR + "wa.db"
 
 	if err := os.MkdirAll(filepath.Dir(db_path), 0755); err != nil {
 		return cstr("create db error:", err.Error())
@@ -81,7 +84,11 @@ func wa_init_client() *C.char {
 		needs_pairing = true
 	}
 
-	client = whatsmeow.NewClient(deviceStore, waLog.Stdout("Client", "DEBUG", true))
+	logFile, err := os.OpenFile(DATA_DIR+"wa.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return cstr("open log file error:", err.Error())
+	}
+	client = whatsmeow.NewClient(deviceStore, waLog.Zerolog(zerolog.New(logFile).With().Timestamp().Logger()))
 	client.AddEventHandler(logPairingStatus)
 	if !needs_pairing {
 		if err := client.Connect(); err != nil {
