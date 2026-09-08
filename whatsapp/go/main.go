@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/adrg/xdg"
@@ -26,6 +28,14 @@ var (
 	syncDone      bool
 	syncMu        sync.Mutex
 )
+
+func log(parts ...string) {
+	fmt.Println("\x1b[34m", parts, "\x1b[0m")
+}
+
+func cstr(parts ...string) *C.char {
+	return C.CString(fmt.Sprintf("%s", strings.Join(parts, " ")))
+}
 
 //export wa_needs_pairing
 func wa_needs_pairing() bool {
@@ -48,18 +58,18 @@ func wa_init_client() *C.char {
 	db_path := xdg.DataHome + "/.mailbox/wa.db"
 
 	if err := os.MkdirAll(filepath.Dir(db_path), 0755); err != nil {
-		return C.CString(fmt.Sprintf("create db error:%s", err.Error()))
+		return cstr("create db error:", err.Error())
 	}
 
 	db_params := "_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000"
 	container, err := sqlstore.New(context.Background(), "sqlite3", "file:"+db_path+"?"+db_params, nil)
 	if err != nil {
-		return C.CString(fmt.Sprintf("get container error:%s", err.Error()))
+		return cstr("get container error:", err.Error())
 	}
 
 	devices, err := container.GetAllDevices(context.Background())
 	if err != nil {
-		return C.CString(fmt.Sprintf("get_all_devices_error:%s", err.Error()))
+		return cstr("get all devices error:", err.Error())
 	}
 
 	var deviceStore *store.Device
@@ -75,7 +85,7 @@ func wa_init_client() *C.char {
 	client.AddEventHandler(logPairingStatus)
 	if !needs_pairing {
 		if err := client.Connect(); err != nil {
-			return C.CString(fmt.Sprintf("connect_error:%s", err.Error()))
+			return cstr("connect error:", err.Error())
 		}
 	}
 	return nil
@@ -84,18 +94,18 @@ func wa_init_client() *C.char {
 func logPairingStatus(evt interface{}) {
 	switch v := evt.(type) {
 	case *events.PairSuccess:
-		fmt.Println("Paired! JID:", v.ID)
+		log("Paired! JID:", v.ID.String())
 	case *events.Connected:
-		fmt.Println("Connected and logged in")
+		log("Connected and logged in")
 	case *events.LoggedOut:
-		fmt.Println("Logged out:", v.Reason)
+		log("Logged out:", v.Reason.String())
 	case *events.OfflineSyncCompleted:
 		syncMu.Lock()
 		syncDone = true
 		syncMu.Unlock()
-		fmt.Println("Offline sync completed:", v.Count, "events")
+		log("Offline sync completed:", strconv.Itoa(v.Count), "events")
 	case *events.HistorySync:
-		fmt.Println("History sync received")
+		log("History sync received")
 	}
 }
 
@@ -106,7 +116,7 @@ func wa_pair_phone(phone *C.char) *C.char {
 
 	if !client.IsConnected() {
 		if err := client.Connect(); err != nil {
-			return C.CString(fmt.Sprintf("connect_error:%s", err.Error()))
+			return cstr("connect error:", err.Error())
 		}
 	}
 
@@ -118,11 +128,11 @@ func wa_pair_phone(phone *C.char) *C.char {
 		"Chrome (Linux)",
 	)
 	if err != nil {
-		return C.CString(fmt.Sprintf("pair_error:%s", err.Error()))
+		return cstr("pair_error:", err.Error())
 	}
 
 	needs_pairing = false
-	return C.CString(code)
+	return cstr(code)
 }
 
 func main() {}
