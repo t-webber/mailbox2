@@ -7,6 +7,7 @@ edition = "2024"
 iced.workspace = true
 mailbox-shared.workspace = true
 mailbox-email.workspace = true
+mailbox-whatsapp.workspace = true
 tokio.workspace = true
 linkify.workspace = true
 open.workspace = true

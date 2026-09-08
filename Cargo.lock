@@ -1547,6 +1547,7 @@ dependencies = [
  "linkify",
  "mailbox-email",
  "mailbox-shared",
+ "mailbox-whatsapp",
  "open",
  "tokio",
 ]
