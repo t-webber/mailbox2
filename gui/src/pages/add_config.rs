@@ -1,12 +1,13 @@
 use alloc::sync::Arc;
 
-use iced::widget::{Column, container, row};
+use iced::border::rounded;
+use iced::widget::{Column, button, container, row};
 use iced::{Alignment, Element, Length, Pixels};
 use mailbox_shared::{EmailConfig, ErrStr, display_err, errmsg};
 
 use crate::ui::component::{btn, input, txt};
 use crate::ui::style::{
-    BTN_COLOUR, FOCUSED_COLOUR, RED, TXT_FONT, YELLOW, grey
+    BTN_COLOUR, FOCUSED_COLOUR, RADIUS, RED, TXT_FONT, YELLOW, grey
 };
 use crate::{Page, Provider};
 
@@ -79,15 +80,13 @@ impl AddConfigPage {
             FOCUSED_COLOUR,
             FOCUSED_COLOUR,
         );
-        let whatsapp_btn = btn(
-            txt("WhatsApp"),
-            AddConfigMessage::ProviderType(ProviderType::WhatsApp),
-            false,
-            true,
-            grey(30),
-            grey(80),
-            grey(80),
-        );
+        let whatsapp_btn =
+            button(txt("WhatsApp")).style(|_, _| button::Style {
+                background: Some(grey(30).into()),
+                text_color: grey(80),
+                border: rounded(RADIUS),
+                ..Default::default()
+            });
         row![email_btn, whatsapp_btn].spacing(4.).into()
     }
 
