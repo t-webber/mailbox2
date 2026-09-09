@@ -10,6 +10,16 @@ use crate::ui::style::{
 };
 use crate::{Page, Provider};
 
+/// Which provider type is being configured.
+#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProviderType {
+    /// Email provider.
+    #[default]
+    Email,
+    /// `WhatsApp` provider.
+    WhatsApp,
+}
+
 /// Page to enter an email provider configuration.
 ///
 /// Refer to [`EmailConfig`] for more information
@@ -28,6 +38,7 @@ pub struct AddConfigPage {
     password: Arc<str>,
     port: u16,
     previous: Option<Provider>,
+    provider_type: ProviderType,
     show_password: bool,
     user: Arc<str>,
 }
@@ -54,6 +65,30 @@ impl AddConfigPage {
     /// cancelled.
     pub fn old(previous: Provider) -> Self {
         Self { previous: Some(previous), ..Self::default() }
+    }
+
+    /// Returns the email/`WhatsApp` toggle.
+    fn provider_chooser(&self) -> Element<'_, AddConfigMessage> {
+        let is_email = self.provider_type == ProviderType::Email;
+        let email_btn = btn(
+            txt("Email"),
+            AddConfigMessage::ProviderType(ProviderType::Email),
+            is_email,
+            true,
+            BTN_COLOUR,
+            FOCUSED_COLOUR,
+            FOCUSED_COLOUR,
+        );
+        let whatsapp_btn = btn(
+            txt("WhatsApp"),
+            AddConfigMessage::ProviderType(ProviderType::WhatsApp),
+            false,
+            true,
+            grey(30),
+            grey(80),
+            grey(80),
+        );
+        row![email_btn, whatsapp_btn].spacing(4.).into()
     }
 
     /// Makes an [`EmailConfig`] from the form data.
@@ -103,6 +138,10 @@ impl Page for AddConfigPage {
                         ""
                     );
                 },
+            AddConfigMessage::ProviderType(pt) => {
+                self.provider_type = pt;
+                self.error = errmsg!("", "");
+            }
             AddConfigMessage::Submit => {
                 self.error = errmsg!("", "");
                 if self.alias.is_none() {
@@ -135,8 +174,9 @@ impl Page for AddConfigPage {
             FOCUSED_COLOUR,
             FOCUSED_COLOUR,
         );
-        let elements: [Element<'_, AddConfigMessage>; 8] = [
+        let elements: [Element<'_, AddConfigMessage>; 9] = [
             txt("New email provider").size(TXT_FONT + 2).into(),
+            self.provider_chooser(),
             input(
                 "Alias for displaying it in this app",
                 &self.alias.map(|ch| ch.to_string()).unwrap_or_default(),
@@ -240,6 +280,7 @@ pub enum AddConfigMessage {
     Error(ErrStr),
     Password(Arc<str>),
     Port(Arc<str>),
+    ProviderType(ProviderType),
     ShowPassword,
     Submit,
     User(Arc<str>),
