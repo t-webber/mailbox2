@@ -99,35 +99,24 @@ impl GuiApp {
         };
         let mut res = None;
         while let Some(next) = set.join_next().await {
-            #[cfg_attr(
-                debug_assertions,
-                expect(
-                    clippy::used_underscore_binding,
-                    reason = "used in debug"
-                )
-            )]
             match next {
                 Ok(Ok(ok)) => lock!(providers).push(ok),
                 Ok(Err(err)) => res = Some(err),
-                Err(_msg) =>
-                    res = Some(errmsg!("Failed to synchronise state", _msg)),
+                Err(msg) =>
+                    res = Some(errmsg!("Failed to synchronise state", msg)),
             }
         }
         (lock!(providers).first().cloned(), res)
     }
 
     /// Authenticate one provider with the given config.
-    #[cfg_attr(
-        debug_assertions,
-        expect(clippy::used_underscore_binding, reason = "used in debug")
-    )]
     async fn auth_one(email: &EmailConfig) -> Result<EmailProvider, ErrStr> {
         timeout(Duration::from_mins(1), async {
             EmailProvider::auth(email).await.map_err(|err| err.display())
         })
         .await
-        .unwrap_or_else(|_msg: Elapsed| {
-            Err(errmsg!("Failed to connect: timed out", _msg))
+        .unwrap_or_else(|msg: Elapsed| {
+            Err(errmsg!("Failed to connect: timed out", msg))
         })
     }
 }

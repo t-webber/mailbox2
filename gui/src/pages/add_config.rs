@@ -42,6 +42,7 @@ pub struct AddConfigPage {
     provider_type: ProviderType,
     show_password: bool,
     user: Arc<str>,
+    wa_needs_pairing: bool,
 }
 
 impl AddConfigPage {
@@ -62,10 +63,15 @@ impl AddConfigPage {
         self.loading = loading;
     }
 
+    /// Creates a new configuration adding page with no previous provider.
+    pub fn new(wa_needs_pairing: bool) -> Self {
+        Self { wa_needs_pairing, ..Self::default() }
+    }
+
     /// Creates a new configuration adding page with a fallback on this char if
     /// cancelled.
-    pub fn old(previous: Provider) -> Self {
-        Self { previous: Some(previous), ..Self::default() }
+    pub fn old(previous: Provider, wa_needs_pairing: bool) -> Self {
+        Self { previous: Some(previous), wa_needs_pairing, ..Self::default() }
     }
 
     /// Returns the email/`WhatsApp` toggle.
@@ -80,13 +86,24 @@ impl AddConfigPage {
             FOCUSED_COLOUR,
             FOCUSED_COLOUR,
         );
-        let whatsapp_btn =
+        let whatsapp_btn = if self.wa_needs_pairing {
+            btn(
+                txt("WhatsApp"),
+                AddConfigMessage::ProviderType(ProviderType::WhatsApp),
+                !is_email,
+                true,
+                BTN_COLOUR,
+                FOCUSED_COLOUR,
+                FOCUSED_COLOUR,
+            )
+        } else {
             button(txt("WhatsApp")).style(|_, _| button::Style {
                 background: Some(grey(30).into()),
                 text_color: grey(80),
                 border: rounded(RADIUS),
                 ..Default::default()
-            });
+            })
+        };
         row![email_btn, whatsapp_btn].spacing(4.).into()
     }
 

@@ -54,11 +54,11 @@ pub enum GuiAppPage {
 
 impl GuiAppPage {
     /// Opens the first page depending on whether configs where found or not.
-    pub fn new(has_configs: bool) -> Self {
+    pub fn new(has_configs: bool, wa_needs_pairing: bool) -> Self {
         if has_configs {
             Self::Authenticate
         } else {
-            Self::AddConfig(AddConfigPage::default())
+            Self::AddConfig(AddConfigPage::new(wa_needs_pairing))
         }
     }
 }
@@ -137,7 +137,11 @@ impl Page for GuiApp {
             }
             GuiAppMessage::Main(MainMessage::SelectProvider(
                 SelectProviderMsg::AddProvider(alias),
-            )) => self.page = GuiAppPage::AddConfig(AddConfigPage::old(alias)),
+            )) =>
+                self.page = GuiAppPage::AddConfig(AddConfigPage::old(
+                    alias,
+                    self.wa_needs_pairing,
+                )),
             GuiAppMessage::Main(MainMessage::SelectProvider(
                 SelectProviderMsg::SelectProvider(provider),
             )) =>
