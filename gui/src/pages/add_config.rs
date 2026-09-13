@@ -156,10 +156,10 @@ impl Page for AddConfigPage {
                 },
             AddConfigMessage::ProviderType(pt) => {
                 self.provider_type = pt;
-                self.error = errmsg!("", "");
+                self.error = ErrStr::default();
             }
             AddConfigMessage::Submit => {
-                self.error = errmsg!("", "");
+                self.error = ErrStr::default();
                 if self.alias.is_none() {
                     self.error = errmsg!("Missing alias", "");
                 } else if self.user.is_empty() {
