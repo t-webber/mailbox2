@@ -1,4 +1,3 @@
-
 use alloc::sync::Arc;
 
 use iced::overlay::menu;
@@ -32,7 +31,6 @@ impl SelectBoxPage {
     pub fn new(current: Arc<str>) -> Self {
         Self { current, list: Arc::default() }
     }
-
 }
 
 impl Page for SelectBoxPage {
