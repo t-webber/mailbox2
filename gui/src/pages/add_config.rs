@@ -1,11 +1,11 @@
 use alloc::sync::Arc;
 
 use iced::border::rounded;
-use iced::widget::{Column, button, container, row};
+use iced::widget::{button, container, row};
 use iced::{Alignment, Element, Length, Pixels};
 use mailbox_shared::{EmailConfig, ErrStr, display_err, errmsg};
 
-use crate::ui::component::{btn, input, txt};
+use crate::ui::component::{btn, input, padded_column, txt};
 use crate::ui::style::{
     BTN_COLOUR, FOCUSED_COLOUR, RADIUS, RED, TXT_FONT, YELLOW, grey
 };
@@ -46,6 +46,63 @@ pub struct AddConfigPage {
 }
 
 impl AddConfigPage {
+    /// Input to fill to specify alias of provider.
+    fn alias_input(&self) -> Element<'_, AddConfigMessage> {
+        input(
+            "Alias for displaying it in this app",
+            &self.alias.map(|ch| ch.to_string()).unwrap_or_default(),
+            |x: String| AddConfigMessage::Alias(x.chars().last()),
+            false,
+        )
+        .into()
+    }
+
+    /// Form to fill to create an email provider.
+    fn email_form(&self) -> [Element<'_, AddConfigMessage>; 5] {
+        [
+            self.alias_input(),
+            input("User (email)", &self.user, AddConfigMessage::User, false)
+                .into(),
+            row![
+                input(
+                    "Password",
+                    &self.password,
+                    AddConfigMessage::Password,
+                    !self.show_password,
+                ),
+                btn(
+                    txt("\u{f0208}"),
+                    AddConfigMessage::ShowPassword,
+                    false,
+                    true,
+                    BTN_COLOUR,
+                    FOCUSED_COLOUR,
+                    FOCUSED_COLOUR
+                )
+            ]
+            .spacing(Pixels(2.))
+            .into(),
+            input(
+                "Domain (e.g. imap.gmail.com)",
+                &self.domain,
+                AddConfigMessage::Domain,
+                false,
+            )
+            .into(),
+            input(
+                "Port (e.g. 993)",
+                &if self.port == 0 {
+                    String::new()
+                } else {
+                    self.port.to_string()
+                },
+                AddConfigMessage::Port,
+                false,
+            )
+            .into(),
+        ]
+    }
+
     /// Displays an error message.
     #[cfg_attr(
         not(debug_assertions),
@@ -116,6 +173,20 @@ impl AddConfigPage {
             Arc::clone(&self.domain),
             self.port,
         )
+    }
+
+    /// Form to fill to create a whatsapp provider.
+    fn wa_form(&self) -> [Element<'_, AddConfigMessage>; 2] {
+        [
+            self.alias_input(),
+            input(
+                "Phone number (w/ country code, w/o leading 0)",
+                &self.user,
+                AddConfigMessage::User,
+                false,
+            )
+            .into(),
+        ]
     }
 }
 
@@ -190,55 +261,13 @@ impl Page for AddConfigPage {
             FOCUSED_COLOUR,
             FOCUSED_COLOUR,
         );
-        let elements: [Element<'_, AddConfigMessage>; 9] = [
+        let elements: [Element<'_, AddConfigMessage>; 5] = [
             txt("New email provider").size(TXT_FONT + 2).into(),
             self.provider_chooser(),
-            input(
-                "Alias for displaying it in this app",
-                &self.alias.map(|ch| ch.to_string()).unwrap_or_default(),
-                |x: String| AddConfigMessage::Alias(x.chars().last()),
-                false,
-            )
-            .into(),
-            input("User (email)", &self.user, AddConfigMessage::User, false)
-                .into(),
-            row![
-                input(
-                    "Password",
-                    &self.password,
-                    AddConfigMessage::Password,
-                    !self.show_password,
-                ),
-                btn(
-                    txt("\u{f0208}"),
-                    AddConfigMessage::ShowPassword,
-                    false,
-                    true,
-                    BTN_COLOUR,
-                    FOCUSED_COLOUR,
-                    FOCUSED_COLOUR
-                )
-            ]
-            .spacing(Pixels(2.))
-            .into(),
-            input(
-                "Domain (e.g. imap.gmail.com)",
-                &self.domain,
-                AddConfigMessage::Domain,
-                false,
-            )
-            .into(),
-            input(
-                "Port (e.g. 993)",
-                &if self.port == 0 {
-                    String::new()
-                } else {
-                    self.port.to_string()
-                },
-                AddConfigMessage::Port,
-                false,
-            )
-            .into(),
+            match self.provider_type {
+                ProviderType::Email => padded_column(self.email_form()).into(),
+                ProviderType::WhatsApp => padded_column(self.wa_form()).into(),
+            },
             if let Some(prev) = &self.previous {
                 row!(
                     submit,
@@ -266,16 +295,9 @@ impl Page for AddConfigPage {
             }
             .into(),
         ];
-        container(
-            Column::with_children(
-                elements
-                    .into_iter()
-                    .map(|elt| container(elt).padding(2.).into()),
-            )
-            .align_x(Alignment::Center),
-        )
-        .width(Length::Fixed(300.))
-        .into()
+        container(padded_column(elements).align_x(Alignment::Center))
+            .width(Length::Fixed(300.))
+            .into()
     }
 }
 

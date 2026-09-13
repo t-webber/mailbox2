@@ -2,7 +2,7 @@ use iced::border::{self, rounded};
 use iced::widget::scrollable::{Direction, Rail, Scrollbar, Scroller};
 use iced::widget::text::IntoFragment;
 use iced::widget::{
-    Button, Scrollable, Text, TextInput, button, container, scrollable, text, text_input
+    Button, Column, Scrollable, Text, TextInput, button, container, scrollable, text, text_input
 };
 use iced::{Color, Element, Font, Renderer, Theme};
 
@@ -105,4 +105,13 @@ pub fn scroll<
             },
             ..scrollable::default(theme, status)
         })
+}
+
+/// Pad each element and align them vertically.
+pub fn padded_column<'txt, Msg: 'txt, const N: usize>(
+    elements: [Element<'txt, Msg>; N],
+) -> Column<'txt, Msg> {
+    Column::with_children(
+        elements.into_iter().map(|elt| container(elt).padding(2.).into()),
+    )
 }
