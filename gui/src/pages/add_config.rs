@@ -165,14 +165,27 @@ impl AddConfigPage {
     }
 
     /// Makes an [`EmailConfig`] from the form data.
-    fn to_cfg(&self) -> EmailConfig {
-        EmailConfig::new(
-            self.alias.unwrap_or_default(),
-            Arc::clone(&self.user),
-            Arc::clone(&self.password),
-            Arc::clone(&self.domain),
-            self.port,
-        )
+    fn try_make_email_cfg(&mut self) -> Option<EmailConfig> {
+        if self.alias.is_none() {
+            self.error = errmsg!("Missing alias");
+        } else if self.user.is_empty() {
+            self.error = errmsg!("Missing user");
+        } else if self.password.is_empty() {
+            self.error = errmsg!("Missing password");
+        } else if self.domain.is_empty() {
+            self.error = errmsg!("Missing domain");
+        } else if self.port == 0 {
+            self.error = errmsg!("Missing port");
+        } else {
+            return Some(EmailConfig::new(
+                self.alias.unwrap_or_default(),
+                Arc::clone(&self.user),
+                Arc::clone(&self.password),
+                Arc::clone(&self.domain),
+                self.port,
+            ));
+        }
+        None
     }
 
     /// Form to fill to create a whatsapp provider.
@@ -228,19 +241,7 @@ impl Page for AddConfigPage {
             }
             AddConfigMessage::Submit => {
                 self.error = ErrStr::default();
-                if self.alias.is_none() {
-                    self.error = errmsg!("Missing alias");
-                } else if self.user.is_empty() {
-                    self.error = errmsg!("Missing user");
-                } else if self.password.is_empty() {
-                    self.error = errmsg!("Missing password");
-                } else if self.domain.is_empty() {
-                    self.error = errmsg!("Missing domain");
-                } else if self.port == 0 {
-                    self.error = errmsg!("Missing port");
-                } else {
-                    return Some(self.to_cfg());
-                }
+                return self.try_make_email_cfg();
             }
             AddConfigMessage::Error(error) => self.error = error,
             AddConfigMessage::Cancel(_) => (),
