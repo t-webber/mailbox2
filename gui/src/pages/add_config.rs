@@ -204,10 +204,8 @@ impl Page for AddConfigPage {
                 self.show_password = !self.show_password,
             AddConfigMessage::Alias(ch) => {
                 if self.alias.is_some() && ch.is_some() {
-                    self.error = errmsg!(
-                        "Alias can't contain more than 1 character",
-                        ""
-                    );
+                    self.error =
+                        errmsg!("Alias can't contain more than 1 character");
                 }
                 self.alias = ch;
             }
@@ -221,8 +219,7 @@ impl Page for AddConfigPage {
                     self.port = nb;
                 } else {
                     self.error = errmsg!(
-                        "Port must be a valid unsigned 16-bits integer",
-                        ""
+                        "Port must be a valid unsigned 16-bits integer"
                     );
                 },
             AddConfigMessage::ProviderType(pt) => {
@@ -232,15 +229,15 @@ impl Page for AddConfigPage {
             AddConfigMessage::Submit => {
                 self.error = ErrStr::default();
                 if self.alias.is_none() {
-                    self.error = errmsg!("Missing alias", "");
+                    self.error = errmsg!("Missing alias");
                 } else if self.user.is_empty() {
-                    self.error = errmsg!("Missing user", "");
+                    self.error = errmsg!("Missing user");
                 } else if self.password.is_empty() {
-                    self.error = errmsg!("Missing password", "");
+                    self.error = errmsg!("Missing password");
                 } else if self.domain.is_empty() {
-                    self.error = errmsg!("Missing domain", "");
+                    self.error = errmsg!("Missing domain");
                 } else if self.port == 0 {
-                    self.error = errmsg!("Missing port", "");
+                    self.error = errmsg!("Missing port");
                 } else {
                     return Some(self.to_cfg());
                 }

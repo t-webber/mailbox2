@@ -24,12 +24,20 @@ macro_rules! log {
 /// helper to create error messages of the right type.
 #[macro_export]
 macro_rules! errmsg {
-    ($str:expr, $details:expr) => {{
+    ($str:literal, $details:ident) => {{
         #[cfg(debug_assertions)]
         let msg = format!("{}: {}", $str, $details);
         #[cfg(not(debug_assertions))]
         let msg = $str;
         $crate::log!("{}: {}", $str, $details);
+        msg
+    }};
+    ($str:literal) => {{
+        #[cfg(debug_assertions)]
+        let msg = format!("{}", $str);
+        #[cfg(not(debug_assertions))]
+        let msg = $str;
+        $crate::log!("{}", $str);
         msg
     }};
 }
