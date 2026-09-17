@@ -1,7 +1,7 @@
 use alloc::sync::Arc;
 
 use iced::border::rounded;
-use iced::widget::{button, container, row};
+use iced::widget::{Column, button, container, row};
 use iced::{Alignment, Element, Length, Pixels};
 use mailbox_shared::{EmailConfig, ErrStr, def, display_err, errmsg};
 use mailbox_whatsapp::Whatsapp;
@@ -31,6 +31,16 @@ pub enum ProviderType {
     WhatsApp,
 }
 
+/// State of the whatsapp pairing.
+pub enum WhatsappState {
+    /// No pairing found, waiting for a phone nulber.
+    NeedsPairing,
+    /// Paired, no need to as.
+    Paired,
+    /// Got a phone number, pairing and synchronising.
+    Synchronising,
+}
+
 /// Page to enter an email provider configuration.
 ///
 /// Refer to [`EmailConfig`] for more information
@@ -53,7 +63,7 @@ pub struct AddConfigPage {
     user: Arc<str>,
     wa_handle: Option<Whatsapp>,
     wa_login_code: Option<Arc<str>>,
-    wa_needs_pairing: bool,
+    wa_state: WhatsappState,
 }
 
 impl AddConfigPage {
@@ -69,8 +79,8 @@ impl AddConfigPage {
     }
 
     /// Form to fill to create an email provider.
-    fn email_form(&self) -> [Element<'_, AddConfigMessage>; 5] {
-        [
+    fn email_form(&self) -> Column<'_, AddConfigMessage> {
+        padded_column([
             self.alias_input(),
             input("User (email)", &self.user, AddConfigMessage::User, false)
                 .into(),
@@ -111,7 +121,7 @@ impl AddConfigPage {
                 false,
             )
             .into(),
-        ]
+        ])
     }
 
     /// Displays an error message.
@@ -145,7 +155,11 @@ impl AddConfigPage {
             show_password: def!(),
             user: def!(),
             wa_login_code: def!(),
-            wa_needs_pairing,
+            wa_state: if wa_needs_pairing {
+                WhatsappState::NeedsPairing
+            } else {
+                WhatsappState::Paired
+            },
             wa_handle,
         }
     }
@@ -174,7 +188,14 @@ impl AddConfigPage {
             FOCUSED_COLOUR,
             FOCUSED_COLOUR,
         );
-        let whatsapp_btn = if self.wa_needs_pairing {
+        let whatsapp_btn = if matches!(self.wa_state, WhatsappState::Paired) {
+            button(txt("WhatsApp")).style(|_, _| button::Style {
+                background: Some(grey(30).into()),
+                text_color: grey(80),
+                border: rounded(RADIUS),
+                ..Default::default()
+            })
+        } else {
             btn(
                 txt("WhatsApp"),
                 AddConfigMessage::ProviderType(ProviderType::WhatsApp),
@@ -184,31 +205,30 @@ impl AddConfigPage {
                 FOCUSED_COLOUR,
                 FOCUSED_COLOUR,
             )
-        } else {
-            button(txt("WhatsApp")).style(|_, _| button::Style {
-                background: Some(grey(30).into()),
-                text_color: grey(80),
-                border: rounded(RADIUS),
-                ..Default::default()
-            })
         };
         row![email_btn, whatsapp_btn].spacing(4.).into()
     }
 
     /// Authenticate by pairing a whatsapp device.
-    fn try_auth_whatsapp(&mut self) -> Option<NewConfig> {
+    fn try_get_pairing_code(&mut self) {
         let Some(wa) = self.wa_handle else {
             self.error = errmsg!("WhatsApp initialisation failed.");
-            return None;
+            return;
         };
         if let Err(msg) = wa.validate_phone(&self.user) {
             self.error = errmsg!(msg);
-            None
-        } else if let Some(alias) = self.alias {
-            Some(NewConfig::Whatsapp(alias))
-        } else {
+            return;
+        }
+        let Some(_) = self.alias else {
             self.error = errmsg!("Missing alias");
-            None
+            return;
+        };
+        match wa.pair_phone(&self.user) {
+            Ok(code) => {
+                self.wa_login_code = Some(code.into());
+                self.wa_state = WhatsappState::Synchronising;
+            }
+            Err(msg) => self.error = errmsg!(msg),
         }
     }
 
@@ -239,17 +259,28 @@ impl AddConfigPage {
     }
 
     /// Form to fill to create a whatsapp provider.
-    fn wa_form(&self) -> [Element<'_, AddConfigMessage>; 2] {
-        [
-            self.alias_input(),
-            input(
-                "Phone number (w/ country code, w/o leading 0)",
-                &self.user,
-                AddConfigMessage::User,
-                false,
-            )
-            .into(),
-        ]
+    fn wa_form(&self) -> Column<'_, AddConfigMessage> {
+        let phone = input(
+            "Phone number (w/ country code, w/o leading 0)",
+            &self.user,
+            AddConfigMessage::User,
+            false,
+        )
+        .into();
+        if let Some(code) = &self.wa_login_code {
+            padded_column([
+                self.alias_input(),
+                phone,
+                txt(format!(
+                    "Enter this code on WhatsApp to pair: {} ",
+                    code.as_ref()
+                ))
+                .color(YELLOW)
+                .into(),
+            ])
+        } else {
+            padded_column([self.alias_input(), phone])
+        }
     }
 }
 
@@ -293,7 +324,7 @@ impl Page for AddConfigPage {
                 self.error = ErrStr::default();
                 match self.provider_type {
                     ProviderType::Email => return self.try_make_email_cfg(),
-                    ProviderType::WhatsApp => return self.try_auth_whatsapp(),
+                    ProviderType::WhatsApp => self.try_get_pairing_code(),
                 }
             }
             AddConfigMessage::Error(error) => self.error = error,
@@ -318,8 +349,8 @@ impl Page for AddConfigPage {
             txt("New email provider").size(TXT_FONT + 2).into(),
             self.provider_chooser(),
             match self.provider_type {
-                ProviderType::Email => padded_column(self.email_form()).into(),
-                ProviderType::WhatsApp => padded_column(self.wa_form()).into(),
+                ProviderType::Email => self.email_form().into(),
+                ProviderType::WhatsApp => self.wa_form().into(),
             },
             if let Some(prev) = &self.previous {
                 row!(
