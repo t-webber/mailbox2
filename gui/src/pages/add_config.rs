@@ -11,6 +11,15 @@ use crate::ui::style::{
 };
 use crate::{Page, Provider};
 
+/// New configuration just created from the form.
+#[expect(dead_code, reason = "todo")]
+pub enum NewConfig {
+    /// Email configuration.
+    Email(EmailConfig),
+    /// `WhatsApp` configuration.
+    Whatsapp(char),
+}
+
 /// Which provider type is being configured.
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ProviderType {
@@ -42,6 +51,7 @@ pub struct AddConfigPage {
     provider_type: ProviderType,
     show_password: bool,
     user: Arc<str>,
+    wa_login_code: Option<Arc<str>>,
     wa_needs_pairing: bool,
 }
 
@@ -164,11 +174,23 @@ impl AddConfigPage {
         row![email_btn, whatsapp_btn].spacing(4.).into()
     }
 
-    /// Makes an [`EmailConfig`] from the form data.
-    fn try_make_email_cfg(&mut self) -> Option<EmailConfig> {
-        if self.alias.is_none() {
+    /// Authenticate by pairing a whatsapp device.
+    fn try_auth_whatsapp(&mut self) -> Option<NewConfig> {
+        if let Some(alias) = self.alias {
+            Some(NewConfig::Whatsapp(alias))
+        } else {
             self.error = errmsg!("Missing alias");
-        } else if self.user.is_empty() {
+            None
+        }
+    }
+
+    /// Makes an [`EmailConfig`] from the form data.
+    fn try_make_email_cfg(&mut self) -> Option<NewConfig> {
+        let Some(alias) = self.alias else {
+            self.error = errmsg!("Missing alias");
+            return None;
+        };
+        if self.user.is_empty() {
             self.error = errmsg!("Missing user");
         } else if self.password.is_empty() {
             self.error = errmsg!("Missing password");
@@ -177,13 +199,13 @@ impl AddConfigPage {
         } else if self.port == 0 {
             self.error = errmsg!("Missing port");
         } else {
-            return Some(EmailConfig::new(
-                self.alias.unwrap_or_default(),
+            return Some(NewConfig::Email(EmailConfig::new(
+                alias,
                 Arc::clone(&self.user),
                 Arc::clone(&self.password),
                 Arc::clone(&self.domain),
                 self.port,
-            ));
+            )));
         }
         None
     }
@@ -205,7 +227,7 @@ impl AddConfigPage {
 
 impl Page for AddConfigPage {
     type Message = AddConfigMessage;
-    type Task = Option<EmailConfig>;
+    type Task = Option<NewConfig>;
     type Update = Self::Message;
 
     fn update(&mut self, data: AddConfigMessage) -> Self::Task {
@@ -241,10 +263,15 @@ impl Page for AddConfigPage {
             }
             AddConfigMessage::Submit => {
                 self.error = ErrStr::default();
-                return self.try_make_email_cfg();
+                match self.provider_type {
+                    ProviderType::Email => return self.try_make_email_cfg(),
+                    ProviderType::WhatsApp => return self.try_auth_whatsapp(),
+                }
             }
             AddConfigMessage::Error(error) => self.error = error,
             AddConfigMessage::Cancel(_) => (),
+            AddConfigMessage::WaLoginCode(code) =>
+                self.wa_login_code = Some(code),
         }
         None
     }
@@ -320,4 +347,5 @@ pub enum AddConfigMessage {
     ShowPassword,
     Submit,
     User(Arc<str>),
+    WaLoginCode(Arc<str>),
 }

@@ -91,7 +91,7 @@ impl MainPage {
         body: ArMx<Option<EmailBody>>,
         provider: Provider,
     ) -> Option<ErrStr> {
-        match provider.get_body(uid).await {
+        match provider.as_email().get_body(uid).await {
             Ok(new_body) => {
                 *lock!(body) = Some(new_body);
                 None
@@ -107,7 +107,7 @@ impl MainPage {
         boxes: Mailboxes,
         provider: Provider,
     ) -> Option<ErrStr> {
-        match provider.get_mailboxes().await {
+        match provider.as_email().get_mailboxes().await {
             Ok((list, errors)) => {
                 *lock!(boxes) = list;
                 errors.first().map(ListBoxError::display)
@@ -120,7 +120,7 @@ impl MainPage {
     ///
     /// Returns the first error if any.
     fn fetch_headers(provider: &Provider) -> Task<MainMessage> {
-        let mut rx = provider.get_headers();
+        let mut rx = provider.as_email().get_headers();
         Task::stream(channel(0, async move |mut output| {
             let mut batch = vec![];
             while rx.recv_many(&mut batch, 32).await > 0 {
@@ -141,7 +141,7 @@ impl MainPage {
         unseen: ArMx<HashSet<u32>>,
         provider: Provider,
     ) -> Option<ErrStr> {
-        match provider.get_unseen().await {
+        match provider.as_email().get_unseen().await {
             Ok(new) => {
                 *lock!(unseen) = new;
                 None
@@ -181,6 +181,7 @@ impl MainPage {
     /// mailbox is selected.
     async fn select_box(provider: Provider, name: Arc<str>) -> Option<ErrStr> {
         provider
+            .as_email()
             .select_mailbox(name.to_string())
             .await
             .map_or_else(|err| Some(err.display()), |()| None)

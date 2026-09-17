@@ -13,8 +13,8 @@ use iced::widget::operation::{focus_next, focus_previous};
 use iced::{Element, Length, Subscription, Task, keyboard};
 use mailbox_shared::ErrStr;
 
-pub use crate::pages::add_config::AddConfigMessage;
 use crate::pages::add_config::AddConfigPage;
+pub use crate::pages::add_config::{AddConfigMessage, NewConfig};
 pub use crate::pages::main::MainPage;
 use crate::pages::main::{MainMessage, SelectProviderMsg};
 use crate::ui::component::txt;

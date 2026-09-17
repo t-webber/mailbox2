@@ -12,6 +12,7 @@ use crate::ffi::{
 };
 
 /// `WhatsApp` provider handler.
+#[derive(Copy, Clone, Debug)]
 pub struct Whatsapp(());
 
 impl Whatsapp {

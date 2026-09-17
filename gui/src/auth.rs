@@ -7,24 +7,34 @@ use tokio::task::JoinSet;
 use tokio::time::error::Elapsed;
 use tokio::time::{Duration, timeout};
 
-use crate::pages::{AddConfigMessage, GuiAppMessage, GuiAppPage, MainPage};
+use crate::pages::{
+    AddConfigMessage, GuiAppMessage, GuiAppPage, MainPage, NewConfig
+};
 use crate::{GuiApp, Page as _, Provider, Providers};
 
 impl GuiApp {
     /// Adds a new provider configuration.
+    #[expect(clippy::todo, reason = "todo")]
     pub fn add_config(&mut self, msg: AddConfigMessage) -> Task<GuiAppMessage> {
         if let GuiAppPage::AddConfig(page) = &mut self.page
-            && let Some(email) = page.update(msg)
+            && let Some(new_config) = page.update(msg)
         {
             page.loading(true);
             let providers = Arc::clone(&self.providers);
             let config = Arc::clone(&self.config);
-            Task::perform(Self::auth(email, providers, config), |res| match res
-            {
-                Ok(provider) => GuiAppMessage::ProviderAdded(provider, None),
-                Err(str) =>
-                    GuiAppMessage::AddConfig(AddConfigMessage::Error(str)),
-            })
+            match new_config {
+                NewConfig::Email(email) =>
+                    Task::perform(Self::auth(email, providers, config), |res| {
+                        match res {
+                            Ok(provider) =>
+                                GuiAppMessage::ProviderAdded(provider, None),
+                            Err(str) => GuiAppMessage::AddConfig(
+                                AddConfigMessage::Error(str),
+                            ),
+                        }
+                    }),
+                NewConfig::Whatsapp(_) => todo!(),
+            }
         } else {
             Task::none()
         }
@@ -33,7 +43,7 @@ impl GuiApp {
     /// Adds a new provider.
     pub fn add_provider(
         &mut self,
-        current: EmailProvider,
+        current: Provider,
         err: Option<ErrStr>,
     ) -> Task<GuiAppMessage> {
         self.page = GuiAppPage::Main(MainPage::new(
@@ -60,7 +70,7 @@ impl GuiApp {
         providers: Providers,
         config: ArMx<Config>,
     ) -> Result<Provider, ErrStr> {
-        let provider = Self::auth_one(&email).await?;
+        let provider = Provider::Email(Self::auth_one(&email).await?);
         lock!(config)
             .add_email_config(email)
             .map_err(|_err| "Failed to save configuration")?;
@@ -100,7 +110,7 @@ impl GuiApp {
         let mut res = None;
         while let Some(next) = set.join_next().await {
             match next {
-                Ok(Ok(ok)) => lock!(providers).push(ok),
+                Ok(Ok(ok)) => lock!(providers).push(Provider::Email(ok)),
                 Ok(Err(err)) => res = Some(err),
                 Err(msg) =>
                     res = Some(errmsg!("Failed to synchronise state", msg)),

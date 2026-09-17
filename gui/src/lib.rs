@@ -41,7 +41,35 @@ use mailbox_whatsapp::Whatsapp;
 use crate::pages::{GuiAppMessage, GuiAppPage};
 
 /// Sharable provider.
-type Provider = EmailProvider;
+#[derive(Clone, Debug)]
+pub enum Provider {
+    /// Provider to use emails.
+    Email(EmailProvider),
+    /// Provider to talk through `WhatsApp`.
+    Whatsapp(Whatsapp, char),
+}
+
+impl Provider {
+    /// Returns the alias of the provider.
+    #[must_use]
+    pub const fn alias(&self) -> char {
+        match self {
+            Self::Email(email_provider) => email_provider.alias(),
+            Self::Whatsapp(_, alias) => *alias,
+        }
+    }
+
+    /// Returns the email provider.
+    #[must_use]
+    #[expect(clippy::todo, reason = "todo")]
+    pub fn as_email(&self) -> &EmailProvider {
+        match self {
+            Self::Email(email_provider) => email_provider,
+            Self::Whatsapp(..) => todo!("make this unreachable"),
+        }
+    }
+}
+
 /// Sharable list of providers.
 type Providers = ArMx<Vec<Provider>>;
 
