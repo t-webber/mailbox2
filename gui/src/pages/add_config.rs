@@ -4,6 +4,7 @@ use iced::border::rounded;
 use iced::widget::{button, container, row};
 use iced::{Alignment, Element, Length, Pixels};
 use mailbox_shared::{EmailConfig, ErrStr, display_err, errmsg};
+use mailbox_whatsapp::Whatsapp;
 
 use crate::ui::component::{btn, input, padded_column, txt};
 use crate::ui::style::{
@@ -176,7 +177,10 @@ impl AddConfigPage {
 
     /// Authenticate by pairing a whatsapp device.
     fn try_auth_whatsapp(&mut self) -> Option<NewConfig> {
-        if let Some(alias) = self.alias {
+        if let Err(msg) = Whatsapp::validate_phone(&self.user) {
+            self.error = errmsg!(msg);
+            None
+        } else if let Some(alias) = self.alias {
             Some(NewConfig::Whatsapp(alias))
         } else {
             self.error = errmsg!("Missing alias");

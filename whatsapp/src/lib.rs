@@ -70,21 +70,19 @@ impl Whatsapp {
     /// # Errors
     ///
     /// Returns an error message if the phone is invalid.
-    pub fn validate_phone(&self, phone: &str) -> Result<(), &'static str> {
-        if phone.starts_with('+') {
-            return Err(
-                "Phone must not start with +, use country code without it"
-            );
-        }
-        if phone.starts_with('0') {
-            return Err("Phone must not start with 0, use country code instead");
-        }
-        if phone.len() < 7 {
-            return Err("Phone too short, include country code");
-        }
-        if !phone.chars().all(|ch| ch.is_ascii_digit()) {
-            return Err("Phone must contain only digits");
-        }
-        Ok(())
+    pub fn validate_phone(phone: &str) -> Result<(), &'static str> {
+        Err(if phone.is_empty() {
+            "Missing phone number"
+        } else if phone.starts_with('+') {
+            "Phone must not start with +, use country code without it"
+        } else if phone.starts_with('0') {
+            "Phone must not start with 0, use country code instead"
+        } else if phone.len() < 7 {
+            "Phone too short, include country code"
+        } else if !phone.chars().all(|ch| ch.is_ascii_digit()) {
+            "Phone must contain only digits"
+        } else {
+            return Ok(());
+        })
     }
 }

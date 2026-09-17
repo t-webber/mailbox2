@@ -32,7 +32,7 @@ macro_rules! errmsg {
         $crate::log!("{}: {}", $str, $details);
         msg
     }};
-    ($str:literal) => {{
+    ($str:expr) => {{
         #[cfg(debug_assertions)]
         let msg = format!("{}", $str);
         #[cfg(not(debug_assertions))]
