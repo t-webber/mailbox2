@@ -12,6 +12,7 @@ use iced::widget::container::Style;
 use iced::widget::operation::{focus_next, focus_previous};
 use iced::{Element, Length, Subscription, Task, keyboard};
 use mailbox_shared::ErrStr;
+use mailbox_whatsapp::Whatsapp;
 
 use crate::pages::add_config::AddConfigPage;
 pub use crate::pages::add_config::{AddConfigMessage, NewConfig};
@@ -54,11 +55,15 @@ pub enum GuiAppPage {
 
 impl GuiAppPage {
     /// Opens the first page depending on whether configs where found or not.
-    pub fn new(has_configs: bool, wa_needs_pairing: bool) -> Self {
+    pub fn new(
+        has_configs: bool,
+        wa_needs_pairing: bool,
+        wa_handle: Option<Whatsapp>,
+    ) -> Self {
         if has_configs {
             Self::Authenticate
         } else {
-            Self::AddConfig(AddConfigPage::new(wa_needs_pairing))
+            Self::AddConfig(AddConfigPage::new(wa_needs_pairing, wa_handle))
         }
     }
 }
@@ -141,6 +146,7 @@ impl Page for GuiApp {
                 self.page = GuiAppPage::AddConfig(AddConfigPage::old(
                     alias,
                     self.wa_needs_pairing,
+                    self.wa_handle,
                 )),
             GuiAppMessage::Main(MainMessage::SelectProvider(
                 SelectProviderMsg::SelectProvider(provider),

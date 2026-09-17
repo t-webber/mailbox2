@@ -70,7 +70,7 @@ impl Whatsapp {
     /// # Errors
     ///
     /// Returns an error message if the phone is invalid.
-    pub fn validate_phone(phone: &str) -> Result<(), &'static str> {
+    pub fn validate_phone(&self, phone: &str) -> Result<(), &'static str> {
         Err(if phone.is_empty() {
             "Missing phone number"
         } else if phone.starts_with('+') {

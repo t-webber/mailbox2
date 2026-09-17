@@ -3,7 +3,7 @@ use alloc::sync::Arc;
 use iced::border::rounded;
 use iced::widget::{button, container, row};
 use iced::{Alignment, Element, Length, Pixels};
-use mailbox_shared::{EmailConfig, ErrStr, display_err, errmsg};
+use mailbox_shared::{EmailConfig, ErrStr, def, display_err, errmsg};
 use mailbox_whatsapp::Whatsapp;
 
 use crate::ui::component::{btn, input, padded_column, txt};
@@ -35,7 +35,6 @@ pub enum ProviderType {
 ///
 /// Refer to [`EmailConfig`] for more information
 /// about each field.
-#[derive(Default)]
 #[allow(
     clippy::allow_attributes,
     clippy::missing_docs_in_private_items,
@@ -52,6 +51,7 @@ pub struct AddConfigPage {
     provider_type: ProviderType,
     show_password: bool,
     user: Arc<str>,
+    wa_handle: Option<Whatsapp>,
     wa_login_code: Option<Arc<str>>,
     wa_needs_pairing: bool,
 }
@@ -132,14 +132,34 @@ impl AddConfigPage {
     }
 
     /// Creates a new configuration adding page with no previous provider.
-    pub fn new(wa_needs_pairing: bool) -> Self {
-        Self { wa_needs_pairing, ..Self::default() }
+    pub fn new(wa_needs_pairing: bool, wa_handle: Option<Whatsapp>) -> Self {
+        Self {
+            alias: def!(),
+            domain: def!(),
+            error: def!(),
+            loading: def!(),
+            password: def!(),
+            port: def!(),
+            previous: def!(),
+            provider_type: def!(),
+            show_password: def!(),
+            user: def!(),
+            wa_login_code: def!(),
+            wa_needs_pairing,
+            wa_handle,
+        }
     }
 
     /// Creates a new configuration adding page with a fallback on this char if
     /// cancelled.
-    pub fn old(previous: Provider, wa_needs_pairing: bool) -> Self {
-        Self { previous: Some(previous), wa_needs_pairing, ..Self::default() }
+    pub fn old(
+        previous: Provider,
+        wa_needs_pairing: bool,
+        wa_handle: Option<Whatsapp>,
+    ) -> Self {
+        let mut this = Self::new(wa_needs_pairing, wa_handle);
+        this.previous = Some(previous);
+        this
     }
 
     /// Returns the email/`WhatsApp` toggle.
@@ -177,7 +197,11 @@ impl AddConfigPage {
 
     /// Authenticate by pairing a whatsapp device.
     fn try_auth_whatsapp(&mut self) -> Option<NewConfig> {
-        if let Err(msg) = Whatsapp::validate_phone(&self.user) {
+        let Some(wa) = self.wa_handle else {
+            self.error = errmsg!("WhatsApp initialisation failed.");
+            return None;
+        };
+        if let Err(msg) = wa.validate_phone(&self.user) {
             self.error = errmsg!(msg);
             None
         } else if let Some(alias) = self.alias {

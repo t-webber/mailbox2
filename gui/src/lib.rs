@@ -103,6 +103,8 @@ pub struct GuiApp {
     page: GuiAppPage,
     /// List of providers.
     providers: Providers,
+    /// `WhatsApp` handle, here to provide `WhatsApp` features.
+    wa_handle: Option<Whatsapp>,
     /// Whether `WhatsApp` pairing toggle should be available.
     wa_needs_pairing: bool,
 }
@@ -120,16 +122,17 @@ impl GuiApp {
     /// Loads the configuration and returns a default [`GuiAppPage`].
     fn new(config: &mut Config) -> (Self, Task<GuiAppMessage>) {
         let has_configs = config.as_first_email_config().is_some();
-        let (wa_needs_pairing, wa_failure) = match Whatsapp::new() {
-            Ok(wa) => (wa.needs_pairing(), None),
-            Err(err) => (false, Some(err)),
+        let (wa_needs_pairing, wa_failure, wa_handle) = match Whatsapp::new() {
+            Ok(wa) => (wa.needs_pairing(), None, Some(wa)),
+            Err(err) => (false, Some(err), None),
         };
         (
             Self {
-                page: GuiAppPage::new(has_configs, wa_needs_pairing),
+                page: GuiAppPage::new(has_configs, wa_needs_pairing, wa_handle),
                 providers: Arc::default(),
                 config: Arc::new(Mutex::new(take(config))),
                 wa_needs_pairing,
+                wa_handle,
             },
             wa_failure.map_or_else(
                 || {

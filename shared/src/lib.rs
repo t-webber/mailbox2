@@ -13,6 +13,14 @@ pub use std::sync::Mutex as StdMutex;
 pub use config::{Config, EmailConfig, LoadError, SaveError};
 pub use tokio::sync::Mutex as TokioMutex;
 
+/// returns the default value for a type.
+#[macro_export]
+macro_rules! def {
+    () => {
+        Default::default()
+    };
+}
+
 /// logs the work being done by the app.
 #[macro_export]
 macro_rules! log {
