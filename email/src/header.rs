@@ -92,18 +92,16 @@ impl EmailHeader {
     /// Returns the sent date, if present.
     #[must_use]
     pub fn date(&self) -> String {
-        self.date
-            .map(|dt| {
-                format!(
-                    "{:02}/{:02}/{:02} {:02}:{:02}",
-                    dt.day(),
-                    dt.month(),
-                    dt.year().rem_euclid(2000i32),
-                    dt.hour(),
-                    dt.minute()
-                )
-            })
-            .unwrap_or_default()
+        self.date.map_or_default(|dt| {
+            format!(
+                "{:02}/{:02}/{:02} {:02}:{:02}",
+                dt.day(),
+                dt.month(),
+                dt.year().rem_euclid(2000i32),
+                dt.hour(),
+                dt.minute()
+            )
+        })
     }
 
     /// Returns the list of senders.
@@ -121,12 +119,9 @@ impl EmailHeader {
 
 /// Converts a list of addresses to a list of strings.
 fn serialises_addresses(addrs: Option<&Vec<Address<'_>>>) -> Vec<String> {
-    addrs
-        .as_ref()
-        .map(|inner| {
-            inner.iter().map(serialise_address).collect::<Vec<String>>()
-        })
-        .unwrap_or_default()
+    addrs.as_ref().map_or_default(|inner| {
+        inner.iter().map(serialise_address).collect::<Vec<String>>()
+    })
 }
 
 /// Converts an address to a string.

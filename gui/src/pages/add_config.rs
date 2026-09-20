@@ -71,7 +71,7 @@ impl AddConfigPage {
     fn alias_input(&self) -> Element<'_, AddConfigMessage> {
         input(
             "Alias for displaying it in this app",
-            &self.alias.map(|ch| ch.to_string()).unwrap_or_default(),
+            &self.alias.map_or_default(|ch| ch.to_string()),
             |x: String| AddConfigMessage::Alias(x.chars().last()),
             false,
         )
