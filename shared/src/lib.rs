@@ -1,7 +1,6 @@
 //! Shared traits and functions accross the mailbox applications.
 
 #![allow(unused_features, reason = "bug")]
-#![feature(stmt_expr_attributes)]
 
 /// Loads and edits config.
 mod config;
