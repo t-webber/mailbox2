@@ -5,10 +5,11 @@
 
 mod ffi;
 
-use core::ffi::CStr;
+use core::ffi::{CStr, c_int};
+use core::ptr;
 
 use crate::ffi::{
-    wa_init_client, wa_is_synced, wa_needs_pairing, wa_pair_phone
+    static_str, wa_init_client, wa_is_synced, wa_needs_pairing, wa_pair_phone
 };
 
 /// `WhatsApp` provider handler.
@@ -35,15 +36,12 @@ impl Whatsapp {
     /// # Errors
     ///
     /// Returns an error if the connection failed to be established.
-    pub fn new() -> Result<Self, String> {
+    pub fn new() -> Result<Self, &'static str> {
+        let size = ptr::null_mut::<c_int>();
         // SAFETY: FFI.
-        let err = unsafe { wa_init_client() };
-        if err.is_null() {
-            Ok(Self(()))
-        } else {
-            // SAFETY: checked for null
-            Err(unsafe { CStr::from_ptr(err) }.to_string_lossy().to_string())
-        }
+        let err = unsafe { wa_init_client(size) };
+
+        if err.is_null() { Ok(Self(())) } else { Err(static_str(err, size)) }
     }
 
     /// Gets a pairing code from a phone number.
@@ -51,14 +49,17 @@ impl Whatsapp {
     /// # Errors
     ///
     /// Returns an error if the whatsmeow connection fails.
-    pub fn pair_phone(&self, phone: &str) -> Result<String, String> {
+    pub fn pair_phone(&self, phone: &str) -> Result<String, &'static str> {
+        let c_phone = phone.as_bytes().as_ptr().cast::<i8>();
+        let success = ptr::null_mut::<bool>();
+        let size = ptr::null_mut::<c_int>();
         // SAFETY: FFI
-        let c_res =
-            unsafe { wa_pair_phone(phone.as_bytes().as_ptr().cast::<i8>()) };
+        let c_res = unsafe { wa_pair_phone(c_phone, size, success) };
         // SAFETY: never returns NULL
         let res =
             unsafe { CStr::from_ptr(c_res) }.to_string_lossy().to_string();
-        if res.len() == 9 { Ok(res) } else { Err(res) }
+        // SAFETY: initialised by FFI
+        if unsafe { *success } { Ok(res) } else { Err(static_str(c_res, size)) }
     }
 
     /// Validates a `WhatsApp` phone number.
